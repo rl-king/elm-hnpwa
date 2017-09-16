@@ -25,26 +25,26 @@ route =
         ]
 
 
-toString : Route -> String
-toString route =
+toUrlString : Route -> ( String, String )
+toUrlString route =
     case route of
         Top ->
-            "Top"
+            ( "Top", "/" )
 
         New ->
-            "New"
+            ( "New", "/new" )
 
         Ask ->
-            "Ask"
+            ( "Ask", "/ask" )
 
         Show ->
-            "Show"
+            ( "Show", "/show" )
 
         Jobs ->
-            "Jobs"
+            ( "Jobs", "/jobs" )
 
         Item x ->
-            "Item"
+            ( "Item", "/item" )
 
 
 parseLocation : Location -> Route
