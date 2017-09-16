@@ -10,7 +10,7 @@ type Route
     | Ask
     | Show
     | Jobs
-    | Item Int
+    | ItemRoute Int
 
 
 route : Url.Parser (Route -> a) a
@@ -21,7 +21,7 @@ route =
         , Url.map Ask (s "ask")
         , Url.map Show (s "show")
         , Url.map Jobs (s "jobs")
-        , Url.map Item (s "item" </> int)
+        , Url.map ItemRoute (s "item" </> int)
         ]
 
 
@@ -43,7 +43,7 @@ toUrlString route =
         Jobs ->
             ( "Jobs", "/jobs" )
 
-        Item x ->
+        ItemRoute x ->
             ( "Item", "/item" )
 
 

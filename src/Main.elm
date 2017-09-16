@@ -6,6 +6,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onWithOptions)
 import Http exposing (get, send)
 import Json.Decode as D exposing (..)
+import Json.Decode.Pipeline as P exposing (decode, hardcoded, optional, required)
 import Navigation exposing (Location)
 import Result exposing (..)
 import Route exposing (..)
@@ -31,25 +32,24 @@ type alias Model =
 type alias Item =
     { id : Int
     , title : String
+    , points : Maybe Int
+    , user : Maybe String
+    , time : Float
+    , timeAgo : String
+    , type_ : String
+    , url : Maybe String
+    , domain : Maybe String
+    , commentsCount : Int
     }
 
 
 
 -- type alias Item =
---     { id : Int
---     , title : String
---     , points : Maybe Int
---     , user : Maybe String
---     , time : Float
---     , time_ago : String
 --     , content : String
 --     , deleted : Maybe Bool
 --     , dead : Maybe Bool
---     , type_ : String
---     , url : Maybe String
---     , domain : Maybe String
 --     , level : Int
---     , comments_count : Int
+--     {
 --     }
 
 
@@ -59,7 +59,17 @@ init location =
     , feed = []
     , items = Dict.empty
     }
-        ! []
+        ! [ initCmd (parseLocation location) ]
+
+
+initCmd : Route -> Cmd Msg
+initCmd route =
+    case route of
+        ItemRoute x ->
+            Cmd.none
+
+        _ ->
+            requestFeed
 
 
 type Msg
@@ -100,11 +110,24 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        currentView =
+            case model.route of
+                ItemRoute x ->
+                    itemView model
+
+                _ ->
+                    listView (getFeedFromItems model.feed model.items)
+    in
     main_ []
         [ headerView
-        , listView model
-        , itemView model
+        , currentView
         ]
+
+
+getFeedFromItems : List Int -> Dict Int Item -> List Item
+getFeedFromItems feed items =
+    List.filterMap (flip Dict.get items) feed
 
 
 headerView : Html Msg
@@ -122,9 +145,28 @@ headerLink ( title, url ) =
     a [ href url, onClickPreventDefault url ] [ text title ]
 
 
-listView : Model -> Html Msg
-listView model =
-    ul [] []
+listView : List Item -> Html Msg
+listView xs =
+    ul [] (List.indexedMap listViewItem xs)
+
+
+listViewItem : Int -> Item -> Html Msg
+listViewItem index item =
+    li []
+        [ span [] [ text <| toString <| index + 1 ]
+        , div []
+            [ a [] [ text item.title ]
+            , span [] [ maybeText "" item.domain ]
+            , footer []
+                [ span [] [ maybeText "0" (Maybe.map toString item.points) ]
+                , text " points by "
+                , a [ href ("/user/" ++ Maybe.withDefault "" item.user) ] [ maybeText "No user found" item.user ]
+                , text (" " ++ item.timeAgo)
+                , text " | "
+                , a [ href ("/item/" ++ toString item.id) ] [ text <| toString item.commentsCount ++ " comments" ]
+                ]
+            ]
+        ]
 
 
 itemView : Model -> Html Msg
@@ -136,8 +178,8 @@ itemView model =
 -- HTTP
 
 
-requestPage : Int -> Cmd Msg
-requestPage id =
+requestFeed : Cmd Msg
+requestFeed =
     let
         url =
             "https://hnpwa.com/api/v0/news.json"
@@ -153,10 +195,17 @@ feedDecoder =
 
 itemDecoder : D.Decoder Item
 itemDecoder =
-    D.map2
-        Item
-        (D.field "id" D.int)
-        (D.field "title" D.string)
+    P.decode Item
+        |> P.required "id" D.int
+        |> P.required "title" D.string
+        |> P.required "points" (D.nullable D.int)
+        |> P.required "user" (D.nullable D.string)
+        |> P.required "time" D.float
+        |> P.required "time_ago" D.string
+        |> P.required "type" D.string
+        |> P.required "url" (D.nullable D.string)
+        |> P.required "domain" (D.nullable D.string)
+        |> P.required "comments_count" D.int
 
 
 
@@ -170,3 +219,8 @@ onClickPreventDefault urlPath =
         , stopPropagation = False
         }
         (D.succeed <| NewUrl urlPath)
+
+
+maybeText : String -> Maybe String -> Html Msg
+maybeText default maybeValue =
+    Html.text <| Maybe.withDefault default maybeValue
