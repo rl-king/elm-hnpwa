@@ -13,6 +13,13 @@ type Route
     | ItemRoute Int
 
 
+type alias RouteData =
+    { title : String
+    , url : String
+    , api : String
+    }
+
+
 route : Url.Parser (Route -> a) a
 route =
     Url.oneOf
@@ -25,26 +32,27 @@ route =
         ]
 
 
-toUrlString : Route -> ( String, String )
-toUrlString route =
+
+toRouteData : Route -> RouteData
+toRouteData route =
     case route of
         Top ->
-            ( "Top", "/" )
+            RouteData "Top" "/" "news"
 
         New ->
-            ( "New", "/new" )
+            RouteData "New" "/new" "newest"
 
         Ask ->
-            ( "Ask", "/ask" )
+            RouteData "Ask" "/ask" "ask"
 
         Show ->
-            ( "Show", "/show" )
+            RouteData "Show" "/show" "show"
 
         Jobs ->
-            ( "Jobs", "/jobs" )
+            RouteData "Jobs" "/jobs" "jobs"
 
         ItemRoute x ->
-            ( "Item", "/item" )
+            RouteData "Item" "/item" "item"
 
 
 parseLocation : Location -> Route

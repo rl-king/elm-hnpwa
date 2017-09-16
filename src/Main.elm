@@ -69,7 +69,7 @@ initCmd route =
             Cmd.none
 
         _ ->
-            requestFeed
+            requestFeed route
 
 
 type Msg
@@ -89,7 +89,7 @@ update msg model =
                 route =
                     parseLocation location
             in
-            { model | route = route } ! []
+            { model | route = route } ! [ requestFeed route ]
 
         GotFeed (Ok xs) ->
             let
@@ -105,7 +105,7 @@ update msg model =
             { model | feed = feed, items = items } ! []
 
         GotFeed (Err x) ->
-            model ! []
+            Debug.log (toString x) model ! []
 
 
 view : Model -> Html Msg
@@ -135,13 +135,13 @@ headerView =
     header []
         [ i [] [ text "logo" ]
         , nav [] <|
-            List.map (headerLink << Route.toUrlString)
+            List.map (headerLink << Route.toRouteData)
                 [ Top, New, Ask, Show, Jobs ]
         ]
 
 
-headerLink : ( String, String ) -> Html Msg
-headerLink ( title, url ) =
+headerLink : RouteData -> Html Msg
+headerLink { title, url } =
     a [ href url, onClickPreventDefault url ] [ text title ]
 
 
@@ -178,13 +178,14 @@ itemView model =
 -- HTTP
 
 
-requestFeed : Cmd Msg
-requestFeed =
-    let
-        url =
-            "https://hnpwa.com/api/v0/news.json"
-    in
-    Http.get url feedDecoder
+getUrl : Route -> String
+getUrl route =
+    "https://hnpwa.com/api/v0/" ++ (.api <| Route.toRouteData route) ++ ".json"
+
+
+requestFeed : Route -> Cmd Msg
+requestFeed route =
+    Http.get (getUrl route) feedDecoder
         |> Http.send GotFeed
 
 
@@ -198,13 +199,13 @@ itemDecoder =
     P.decode Item
         |> P.required "id" D.int
         |> P.required "title" D.string
-        |> P.required "points" (D.nullable D.int)
-        |> P.required "user" (D.nullable D.string)
+        |> P.optional "points" (D.nullable D.int) Nothing
+        |> P.optional "user" (D.nullable D.string) Nothing
         |> P.required "time" D.float
         |> P.required "time_ago" D.string
         |> P.required "type" D.string
-        |> P.required "url" (D.nullable D.string)
-        |> P.required "domain" (D.nullable D.string)
+        |> P.optional "url" (D.nullable D.string) Nothing
+        |> P.optional "domain" (D.nullable D.string) Nothing
         |> P.required "comments_count" D.int
 
 
