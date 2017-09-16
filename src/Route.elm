@@ -5,38 +5,48 @@ import UrlParser as Url exposing (..)
 
 
 type Route
-    = Home
-    | Work
-    | Contact
-    | Page String
+    = Top
+    | New
+    | Ask
+    | Show
+    | Jobs
+    | Item Int
 
 
 route : Url.Parser (Route -> a) a
 route =
     Url.oneOf
-        [ Url.map Home top
-        , Url.map Work (s "work")
-        , Url.map Contact (s "contact")
-        , Url.map Page (s "work" </> string)
+        [ Url.map Top top
+        , Url.map New (s "new")
+        , Url.map Ask (s "ask")
+        , Url.map Show (s "show")
+        , Url.map Jobs (s "jobs")
+        , Url.map Item (s "item" </> int)
         ]
 
 
-routeToString : Route -> String
-routeToString route =
+toString : Route -> String
+toString route =
     case route of
-        Home ->
-            ""
+        Top ->
+            "Top"
 
-        Work ->
-            "work"
+        New ->
+            "New"
 
-        Contact ->
-            "contact"
+        Ask ->
+            "Ask"
 
-        Page x ->
-            x
+        Show ->
+            "Show"
+
+        Jobs ->
+            "Jobs"
+
+        Item x ->
+            "Item"
 
 
 parseLocation : Location -> Route
 parseLocation =
-    Url.parsePath route >> Maybe.withDefault Home
+    Url.parsePath route >> Maybe.withDefault Top
