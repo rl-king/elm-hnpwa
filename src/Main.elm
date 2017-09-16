@@ -24,7 +24,7 @@ main =
 
 type alias Model =
     { route : Route
-    , feed : List Int
+    , feed : Dict String (List Int)
     , items : Dict Int Item
     }
 
@@ -40,23 +40,24 @@ type alias Item =
     , url : Maybe String
     , domain : Maybe String
     , commentsCount : Int
+    , content : String
+    , deleted : Bool
+    , dead : Bool
+    , level : Int
     }
 
 
-
--- type alias Item =
---     , content : String
---     , deleted : Maybe Bool
---     , dead : Maybe Bool
---     , level : Int
---     {
---     }
+type RemoteData a
+    = Loading
+    | Error Http.Error
+    | Updating a
+    | Complete a
 
 
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
     { route = parseLocation location
-    , feed = []
+    , feed = Dict.empty
     , items = Dict.empty
     }
         ! [ initCmd (parseLocation location) ]
@@ -66,7 +67,7 @@ initCmd : Route -> Cmd Msg
 initCmd route =
     case route of
         ItemRoute x ->
-            Cmd.none
+            requestItem route
 
         _ ->
             requestFeed route
@@ -76,6 +77,7 @@ type Msg
     = NewUrl String
     | UrlChange Location
     | GotFeed (Result Http.Error (List Item))
+    | GotItem (Result Http.Error Item)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -93,8 +95,11 @@ update msg model =
 
         GotFeed (Ok xs) ->
             let
+                routeTitle =
+                    Route.toRouteData model.route |> .title
+
                 feed =
-                    List.map .id xs
+                    Dict.insert routeTitle (List.map .id xs) model.feed
 
                 insert x d =
                     Dict.insert x.id x d
@@ -107,6 +112,12 @@ update msg model =
         GotFeed (Err x) ->
             Debug.log (toString x) model ! []
 
+        GotItem (Ok x) ->
+            { model | items = Dict.insert x.id x model.items } ! []
+
+        GotItem (Err x) ->
+            Debug.log (toString x) model ! []
+
 
 view : Model -> Html Msg
 view model =
@@ -114,10 +125,20 @@ view model =
         currentView =
             case model.route of
                 ItemRoute x ->
-                    itemView model
+                    case Dict.get x model.items of
+                        Just x ->
+                            itemView x
+
+                        Nothing ->
+                            div [] []
 
                 _ ->
-                    listView (getFeedFromItems model.feed model.items)
+                    case Dict.get (toRouteData model.route |> .title) model.feed of
+                        Just xs ->
+                            listView (getFeedFromItems xs model.items)
+
+                        Nothing ->
+                            div [] []
     in
     main_ []
         [ headerView
@@ -135,14 +156,13 @@ headerView =
     header []
         [ i [] [ text "logo" ]
         , nav [] <|
-            List.map (headerLink << Route.toRouteData)
-                [ Top, New, Ask, Show, Jobs ]
+            List.map headerLink [ Top, New, Ask, Show, Jobs ]
         ]
 
 
-headerLink : RouteData -> Html Msg
-headerLink { title, url } =
-    a [ href url, onClickPreventDefault url ] [ text title ]
+headerLink : Route -> Html Msg
+headerLink route =
+    link route [] [ text (Route.toRouteData route |> .title) ]
 
 
 listView : List Item -> Html Msg
@@ -155,23 +175,36 @@ listViewItem index item =
     li []
         [ span [] [ text <| toString <| index + 1 ]
         , div []
-            [ a [] [ text item.title ]
+            [ link (Route.ItemRoute item.id) [] [ text item.title ]
             , span [] [ maybeText "" item.domain ]
             , footer []
                 [ span [] [ maybeText "0" (Maybe.map toString item.points) ]
                 , text " points by "
-                , a [ href ("/user/" ++ Maybe.withDefault "" item.user) ] [ maybeText "No user found" item.user ]
-                , text (" " ++ item.timeAgo)
-                , text " | "
-                , a [ href ("/item/" ++ toString item.id) ] [ text <| toString item.commentsCount ++ " comments" ]
+                , link (Route.User (Maybe.withDefault "" item.user)) [] [ maybeText "No user found" item.user ]
+                , text (" " ++ item.timeAgo ++ " | ")
+                , link (Route.ItemRoute item.id) [] [ text <| toString item.commentsCount ++ " comments" ]
                 ]
             ]
         ]
 
 
-itemView : Model -> Html Msg
-itemView model =
-    article [] []
+itemView : Item -> Html Msg
+itemView item =
+    article []
+        [ div []
+            [ a [] [ text item.title ]
+            , span [] [ maybeText "" item.domain ]
+            , footer []
+                [ span [] [ maybeText "0" (Maybe.map toString item.points) ]
+                , text " points by "
+                , link (Route.User (Maybe.withDefault "" item.user)) [] [ maybeText "No user found" item.user ]
+                , text (" " ++ item.timeAgo)
+                , text " | "
+                , a [ href ("/item/" ++ toString item.id) ] [ text <| toString item.commentsCount ++ " comments" ]
+                ]
+            ]
+        , p [] [ text item.content ]
+        ]
 
 
 
@@ -180,13 +213,24 @@ itemView model =
 
 getUrl : Route -> String
 getUrl route =
-    "https://hnpwa.com/api/v0/" ++ (.api <| Route.toRouteData route) ++ ".json"
+    case route of
+        ItemRoute id ->
+            "https://hnpwa.com/api/v0/item/" ++ toString id ++ ".json"
+
+        _ ->
+            "https://hnpwa.com/api/v0/" ++ (.api <| Route.toRouteData route) ++ ".json"
 
 
 requestFeed : Route -> Cmd Msg
 requestFeed route =
     Http.get (getUrl route) feedDecoder
         |> Http.send GotFeed
+
+
+requestItem : Route -> Cmd Msg
+requestItem route =
+    Http.get (getUrl route) itemDecoder
+        |> Http.send GotItem
 
 
 feedDecoder : D.Decoder (List Item)
@@ -207,10 +251,19 @@ itemDecoder =
         |> P.optional "url" (D.nullable D.string) Nothing
         |> P.optional "domain" (D.nullable D.string) Nothing
         |> P.required "comments_count" D.int
+        |> P.optional "content" D.string ""
+        |> P.optional "deleted" D.bool False
+        |> P.optional "dead" D.bool False
+        |> P.optional "level" D.int 0
 
 
 
 -- TODO Fix ctrl click
+
+
+link : Route -> List (Attribute Msg) -> List (Html Msg) -> Html Msg
+link route attrs kids =
+    a (attrs ++ [ href (Route.toRouteData route |> .url), onClickPreventDefault (Route.toRouteData route |> .url) ]) kids
 
 
 onClickPreventDefault : String -> Attribute Msg

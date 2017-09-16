@@ -11,6 +11,7 @@ type Route
     | Show
     | Jobs
     | ItemRoute Int
+    | User String
 
 
 type alias RouteData =
@@ -29,8 +30,8 @@ route =
         , Url.map Show (s "show")
         , Url.map Jobs (s "jobs")
         , Url.map ItemRoute (s "item" </> int)
+        , Url.map User (s "user" </> string)
         ]
-
 
 
 toRouteData : Route -> RouteData
@@ -52,7 +53,10 @@ toRouteData route =
             RouteData "Jobs" "/jobs" "jobs"
 
         ItemRoute x ->
-            RouteData "Item" "/item" "item"
+            RouteData "Item" ("/item/" ++ toString x) "item"
+
+        User x ->
+            RouteData "User" ("/user/" ++ x) "user"
 
 
 parseLocation : Location -> Route
