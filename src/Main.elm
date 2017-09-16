@@ -32,7 +32,7 @@ type alias Model =
 type alias Item =
     { id : Int
     , title : String
-    , points : Maybe Int
+    , points : Int
     , user : Maybe String
     , time : Float
     , timeAgo : String
@@ -138,10 +138,10 @@ view model =
                             listView (getFeedFromItems xs model.items)
 
                         Nothing ->
-                            div [] []
+                            div [] [ text "loading" ]
     in
     main_ []
-        [ headerView
+        [ headerView model.route
         , currentView
         ]
 
@@ -151,18 +151,21 @@ getFeedFromItems feed items =
     List.filterMap (flip Dict.get items) feed
 
 
-headerView : Html Msg
-headerView =
+headerView : Route -> Html Msg
+headerView currentRoute =
     header []
-        [ i [] [ text "logo" ]
+        [ strong [] [ text "logo" ]
         , nav [] <|
-            List.map headerLink [ Top, New, Ask, Show, Jobs ]
+            List.map (headerLink currentRoute) [ Top, New, Ask, Show, Jobs ]
         ]
 
 
-headerLink : Route -> Html Msg
-headerLink route =
-    link route [] [ text (Route.toRouteData route |> .title) ]
+headerLink : Route -> Route -> Html Msg
+headerLink currentRoute route =
+    if currentRoute == route then
+        span [] [ text (Route.toRouteData route |> .title) ]
+    else
+        link route [] [ text (Route.toRouteData route |> .title) ]
 
 
 listView : List Item -> Html Msg
@@ -173,12 +176,12 @@ listView xs =
 listViewItem : Int -> Item -> Html Msg
 listViewItem index item =
     li []
-        [ span [] [ text <| toString <| index + 1 ]
+        [ span [ class "index" ] [ text <| toString <| index + 1 ]
         , div []
             [ link (Route.ItemRoute item.id) [] [ text item.title ]
-            , span [] [ maybeText "" item.domain ]
+            , span [ class "domain" ] [ maybeText "" item.domain ]
             , footer []
-                [ span [] [ maybeText "0" (Maybe.map toString item.points) ]
+                [ span [] [ text (toString item.points) ]
                 , text " points by "
                 , link (Route.User (Maybe.withDefault "" item.user)) [] [ maybeText "No user found" item.user ]
                 , text (" " ++ item.timeAgo ++ " | ")
@@ -195,7 +198,7 @@ itemView item =
             [ a [] [ text item.title ]
             , span [] [ maybeText "" item.domain ]
             , footer []
-                [ span [] [ maybeText "0" (Maybe.map toString item.points) ]
+                [ span [] [ text (toString item.points) ]
                 , text " points by "
                 , link (Route.User (Maybe.withDefault "" item.user)) [] [ maybeText "No user found" item.user ]
                 , text (" " ++ item.timeAgo)
@@ -243,7 +246,7 @@ itemDecoder =
     P.decode Item
         |> P.required "id" D.int
         |> P.required "title" D.string
-        |> P.optional "points" (D.nullable D.int) Nothing
+        |> P.optional "points" D.int 0
         |> P.optional "user" (D.nullable D.string) Nothing
         |> P.required "time" D.float
         |> P.required "time_ago" D.string
