@@ -7,6 +7,7 @@ import Html.Events exposing (onClick, onWithOptions)
 import Http exposing (get, send)
 import Json.Decode as D exposing (..)
 import Json.Decode.Pipeline as P exposing (decode, hardcoded, optional, required)
+import Markdown exposing (..)
 import Navigation exposing (Location)
 import Result exposing (..)
 import Route exposing (..)
@@ -50,10 +51,6 @@ type alias Item =
 
 type Comments
     = Comments (List Item)
-
-
-noComments =
-    Comments []
 
 
 init : Navigation.Location -> ( Model, Cmd Msg )
@@ -196,7 +193,7 @@ listViewItem index item =
 itemView : Item -> Html Msg
 itemView item =
     article []
-        [ section [ ]
+        [ section []
             [ h2 [] [ text item.title ]
             , span [ class "domain" ] [ maybeText "" item.domain ]
             , footer []
@@ -206,17 +203,19 @@ itemView item =
                 , text (" " ++ item.timeAgo)
                 ]
             ]
-        , p [] [ text item.content ]
+        , Markdown.toHtml [] item.content
         , section [ class "comments-view" ]
             [ commentsView (getComments item.comments)
             ]
         ]
 
 
+commentsView : List Item -> Html Msg
 commentsView xs =
     ul [] (List.map commentView xs)
 
 
+commentView : Item -> Html Msg
 commentView item =
     li []
         [ div [ class "comment-meta" ]
@@ -225,11 +224,12 @@ commentView item =
                 [ text <| Maybe.withDefault "" item.user ]
             , text (" " ++ item.timeAgo)
             ]
-        , p [] [ text item.content ]
+        , Markdown.toHtml [] item.content
         , commentsView (getComments item.comments)
         ]
 
 
+getComments : Comments -> List Item
 getComments x =
     case x of
         Comments xs ->
@@ -280,7 +280,7 @@ decodeItem =
         |> P.optional "url" (D.nullable D.string) Nothing
         |> P.optional "domain" (D.nullable D.string) Nothing
         |> P.required "comments_count" D.int
-        |> P.optional "comments" decodeComments noComments
+        |> P.optional "comments" decodeComments (Comments [])
         |> P.optional "content" D.string ""
         |> P.optional "deleted" D.bool False
         |> P.optional "dead" D.bool False

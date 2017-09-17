@@ -9,6 +9,7 @@ const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const WebpackNotifierPlugin = require('webpack-notifier');
+const SWPrecacheWebpackPlugin = require('sw-precache-webpack-plugin');
 
 const prod = 'production';
 const dev = 'development';
@@ -19,7 +20,8 @@ const isProd = TARGET_ENV == prod;
 
 const entryPath = path.join(__dirname, 'src/index.js');
 const outputPath = path.join(__dirname, 'dist');
-const outputFilename = isProd ? '[name]-[hash].js' : '[name].js'
+const outputFilename = isProd ? '[name]-[hash].js' : '[name].js';
+const endpoint = 'https://hnpwa.com/api/v0';
 
 console.log(chalk.yellowBright.underline.bold('Starting ' + TARGET_ENV + ' mode\n'));
 
@@ -129,16 +131,50 @@ if (isProd === true) {
                 cssProcessorOptions: { discardComments: { removeAll: true } },
                 canPrint: true
             }),
-            new CopyWebpackPlugin([
-                { from: 'src', to: 'images/' }
-            ]),
-
             new webpack.optimize.UglifyJsPlugin({
                 minimize: true,
                 mangle: true,
                 compressor: {
                     warnings: false
                 }
+            }),
+            new SWPrecacheWebpackPlugin({
+                cacheId: 'elmhnpwa',
+                dontCacheBustUrlsMatching: /\.\w{8}\./,
+                filename: 'service-worker.js',
+                minify: true,
+                navigateFallback: '/index.html',
+                staticFileGlobsIgnorePatterns: [/\.map$/, /asset-manifest\.json$/],
+                runtimeCaching: [
+                    {
+                        urlPattern: new RegExp(`${endpoint}/(news|newest|ask|show|jobs).json`),
+                        handler: 'networkFirst',
+                        options: {
+                            cache: {
+                                maxEntries: 30,
+                                name: 'feed-cache'
+                            }
+                        }
+                    }, {
+                        urlPattern: new RegExp(`${endpoint}/item/`),
+                        handler: 'networkFirst',
+                        options: {
+                            cache: {
+                                maxEntries: 30,
+                                name: 'item-cache'
+                            }
+                        }
+                    }, {
+                        urlPattern: new RegExp(`${endpoint}/user/`),
+                        handler: 'networkFirst',
+                        options: {
+                            cache: {
+                                maxEntries: 30,
+                                name: 'user-cache'
+                            }
+                        }
+                    }
+                ],
             })
         ]
     });

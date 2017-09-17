@@ -35,6 +35,7 @@
         "rimraf": "^2.6.1",
         "sass-loader": "^6.0.3",
         "style-loader": "^0.16.0",
+        "sw-precache-webpack-plugin": "^0.11.4",
         "url-loader": "^0.5.8",
         "webpack": "^3.5.4",
         "webpack-dev-server": "^2.7.1",
