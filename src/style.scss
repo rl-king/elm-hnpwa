@@ -1,0 +1,132 @@
+html {
+    font-size: 87.5%;
+}
+
+body {
+    padding: 0;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+}
+
+p {
+    padding: 0;
+    line-height: 1.4rem;
+    max-width: 50rem;
+}
+
+a {
+    text-decoration: none;
+    color: #000;
+}
+
+a:visited {
+    color: #666;
+}
+
+h2 {
+    padding: 0;
+    margin: 0 0.5rem 0 0;
+    font-size: 1.5rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+ul {
+    list-style: none;
+    padding-left: 0;
+    margin-top: 0;
+}
+
+li a:hover {
+    text-decoration: underline;
+}
+
+header {
+    background-color: #eee;
+    padding: 0 1.5rem;
+    display: flex;
+    height: 3rem;
+    align-items: center;
+    font-weight: 500;
+    margin-bottom: 0.15rem;
+}
+
+header span {
+    color: teal;
+}
+
+nav {
+    margin-left: 2rem;
+
+    a,
+    span {
+        margin-right: 1rem;
+    }
+}
+
+.list-view {
+    li {
+        padding: .5rem 1.5rem;
+        display: flex;
+        border-bottom: 1px solid #eee;
+    }
+
+    .domain {
+        margin-left: .5rem;
+    }
+}
+
+.domain {
+    color: #999;
+    font-size: .75rem;
+}
+
+li footer {
+    margin-top: .25rem;
+    font-size: .875rem;
+    color: #666;
+
+    a {
+        color: #666;
+        text-decoration: underline;
+    }
+}
+
+.index {
+    display: flex;
+    align-items: center;
+    margin-right: 1rem;
+    min-width: 1rem;
+    font-weight: 500;
+    color: #666;
+}
+
+article {
+    padding: 1rem 1.5rem;
+
+    & ul:nth-child(2n) {
+        padding: 0;
+    }
+
+    footer {
+        margin-top: 0.5rem;
+    }
+
+    ul {
+        margin-top: 1rem;
+        padding-left: 1.5rem;
+        border-left: 1px solid #ccc;
+    }
+}
+
+.comments-view {
+    margin-left: -1.5rem;
+}
+
+.comment-meta {
+    margin-top: .25rem;
+    margin-left: -1.5rem;
+    padding: 0.1rem .5rem 0.1rem 1.5rem;
+    font-size: .875rem;
+    color: #666;
+}

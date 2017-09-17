@@ -40,6 +40,7 @@ type alias Item =
     , url : Maybe String
     , domain : Maybe String
     , commentsCount : Int
+    , comments : Comments
     , content : String
     , deleted : Bool
     , dead : Bool
@@ -47,11 +48,12 @@ type alias Item =
     }
 
 
-type RemoteData a
-    = Loading
-    | Error Http.Error
-    | Updating a
-    | Complete a
+type Comments
+    = Comments (List Item)
+
+
+noComments =
+    Comments []
 
 
 init : Navigation.Location -> ( Model, Cmd Msg )
@@ -60,11 +62,11 @@ init location =
     , feed = Dict.empty
     , items = Dict.empty
     }
-        ! [ initCmd (parseLocation location) ]
+        ! [ urlChangeCmd (parseLocation location) ]
 
 
-initCmd : Route -> Cmd Msg
-initCmd route =
+urlChangeCmd : Route -> Cmd Msg
+urlChangeCmd route =
     case route of
         ItemRoute x ->
             requestItem route
@@ -91,7 +93,7 @@ update msg model =
                 route =
                     parseLocation location
             in
-            { model | route = route } ! [ requestFeed route ]
+            { model | route = route } ! [ urlChangeCmd route ]
 
         GotFeed (Ok xs) ->
             let
@@ -170,14 +172,14 @@ headerLink currentRoute route =
 
 listView : List Item -> Html Msg
 listView xs =
-    ul [] (List.indexedMap listViewItem xs)
+    ul [ class "list-view" ] (List.indexedMap listViewItem xs)
 
 
 listViewItem : Int -> Item -> Html Msg
 listViewItem index item =
     li []
         [ span [ class "index" ] [ text <| toString <| index + 1 ]
-        , div []
+        , div [ class "list-item-content" ]
             [ link (Route.ItemRoute item.id) [] [ text item.title ]
             , span [ class "domain" ] [ maybeText "" item.domain ]
             , footer []
@@ -194,20 +196,44 @@ listViewItem index item =
 itemView : Item -> Html Msg
 itemView item =
     article []
-        [ div []
-            [ a [] [ text item.title ]
-            , span [] [ maybeText "" item.domain ]
+        [ section [ ]
+            [ h2 [] [ text item.title ]
+            , span [ class "domain" ] [ maybeText "" item.domain ]
             , footer []
                 [ span [] [ text (toString item.points) ]
                 , text " points by "
                 , link (Route.User (Maybe.withDefault "" item.user)) [] [ maybeText "No user found" item.user ]
                 , text (" " ++ item.timeAgo)
-                , text " | "
-                , a [ href ("/item/" ++ toString item.id) ] [ text <| toString item.commentsCount ++ " comments" ]
                 ]
             ]
         , p [] [ text item.content ]
+        , section [ class "comments-view" ]
+            [ commentsView (getComments item.comments)
+            ]
         ]
+
+
+commentsView xs =
+    ul [] (List.map commentView xs)
+
+
+commentView item =
+    li []
+        [ div [ class "comment-meta" ]
+            [ link (Route.User <| Maybe.withDefault "" item.user)
+                []
+                [ text <| Maybe.withDefault "" item.user ]
+            , text (" " ++ item.timeAgo)
+            ]
+        , p [] [ text item.content ]
+        , commentsView (getComments item.comments)
+        ]
+
+
+getComments x =
+    case x of
+        Comments xs ->
+            xs
 
 
 
@@ -226,26 +252,26 @@ getUrl route =
 
 requestFeed : Route -> Cmd Msg
 requestFeed route =
-    Http.get (getUrl route) feedDecoder
+    Http.get (getUrl route) decodeFeed
         |> Http.send GotFeed
 
 
 requestItem : Route -> Cmd Msg
 requestItem route =
-    Http.get (getUrl route) itemDecoder
+    Http.get (getUrl route) decodeItem
         |> Http.send GotItem
 
 
-feedDecoder : D.Decoder (List Item)
-feedDecoder =
-    D.list itemDecoder
+decodeFeed : D.Decoder (List Item)
+decodeFeed =
+    D.list decodeItem
 
 
-itemDecoder : D.Decoder Item
-itemDecoder =
+decodeItem : D.Decoder Item
+decodeItem =
     P.decode Item
         |> P.required "id" D.int
-        |> P.required "title" D.string
+        |> P.optional "title" D.string "No title"
         |> P.optional "points" D.int 0
         |> P.optional "user" (D.nullable D.string) Nothing
         |> P.required "time" D.float
@@ -254,10 +280,16 @@ itemDecoder =
         |> P.optional "url" (D.nullable D.string) Nothing
         |> P.optional "domain" (D.nullable D.string) Nothing
         |> P.required "comments_count" D.int
+        |> P.optional "comments" decodeComments noComments
         |> P.optional "content" D.string ""
         |> P.optional "deleted" D.bool False
         |> P.optional "dead" D.bool False
         |> P.optional "level" D.int 0
+
+
+decodeComments : Decoder Comments
+decodeComments =
+    D.map Comments (D.list (D.lazy (\_ -> decodeItem)))
 
 
 
