@@ -34,6 +34,21 @@ route =
         ]
 
 
+toTitle : Route -> String
+toTitle =
+    toRouteData >> .title
+
+
+toUrl : Route -> String
+toUrl =
+    toRouteData >> .url
+
+
+toApi : Route -> String
+toApi =
+    toRouteData >> .api
+
+
 toRouteData : Route -> RouteData
 toRouteData route =
     case route of

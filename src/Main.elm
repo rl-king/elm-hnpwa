@@ -106,9 +106,9 @@ headerView route =
 headerLink : Route -> Route -> Html Msg
 headerLink currentRoute route =
     if currentRoute == route then
-        span [] [ text (Route.toRouteData route |> .title) ]
+        span [] [ text (Route.toTitle route) ]
     else
-        link route [] [ text (Route.toRouteData route |> .title) ]
+        link route [] [ text (Route.toTitle route) ]
 
 
 listView : List Item -> Html Msg
@@ -240,29 +240,33 @@ endpoint =
 requestItem : Int -> Cmd Msg
 requestItem x =
     Http.get (endpoint ++ "item/" ++ toString x ++ ".json") decodeItem
-        |> Http.send (toRemoteDate >> GotItem)
+        |> Http.send (toRemoteData >> GotItem)
 
 
 requestUser : String -> Cmd Msg
 requestUser x =
     Http.get (endpoint ++ "user/" ++ x ++ ".json") decodeUser
-        |> Http.send (toRemoteDate >> GotUser)
+        |> Http.send (toRemoteData >> GotUser)
 
 
 requestFeed : Route -> Cmd Msg
 requestFeed route =
-    Http.get (endpoint ++ .api (Route.toRouteData route) ++ ".json") decodeFeed
-        |> Http.send (toRemoteDate >> GotFeed)
+    Http.get (endpoint ++ Route.toApi route ++ ".json") decodeFeed
+        |> Http.send (toRemoteData >> GotFeed)
 
 
-toRemoteDate : Result Http.Error a -> RemoteData a
-toRemoteDate result =
+toRemoteData : Result Http.Error a -> RemoteData a
+toRemoteData result =
     case result of
         Err e ->
             Failure e
 
         Ok x ->
             Success x
+
+
+
+--DECODERS
 
 
 decodeFeed : D.Decoder (List Item)
@@ -305,7 +309,7 @@ decodeComments =
 
 link : Route -> List (Attribute Msg) -> List (Html Msg) -> Html Msg
 link route attrs kids =
-    a (attrs ++ [ href (Route.toRouteData route |> .url), onClickPreventDefault (Route.toRouteData route |> .url) ]) kids
+    a (attrs ++ [ href (Route.toUrl route), onClickPreventDefault (Route.toUrl route) ]) kids
 
 
 onClickPreventDefault : String -> Attribute Msg
