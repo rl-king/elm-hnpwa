@@ -1,17 +1,15 @@
 module Main exposing (..)
 
-import Dict exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onWithOptions)
 import Http exposing (get, send)
 import Json.Decode as D exposing (..)
-import Json.Decode.Pipeline as P exposing (decode, hardcoded, optional, required)
-import Markdown exposing (..)
+import Json.Decode.Pipeline as P exposing (decode, optional, required)
+import Markdown exposing (toHtml)
 import Navigation exposing (Location)
 import Result exposing (..)
 import Route exposing (..)
-import Task exposing (..)
 
 
 main : Program Never Model Msg
@@ -53,9 +51,9 @@ parseRoute route =
 type Msg
     = NewUrl String
     | UrlChange Location
-    | GotFeed (Result Http.Error (List Item))
-    | GotItem (Result Http.Error Item)
-    | GotUser (Result Http.Error User)
+    | GotFeed (RemoteData (List Item))
+    | GotItem (RemoteData Item)
+    | GotUser (RemoteData User)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -67,23 +65,14 @@ update msg model =
         UrlChange location ->
             parseRoute (parseLocation location)
 
-        GotFeed (Ok xs) ->
-            { model | feed = Success xs } ! []
+        GotFeed x ->
+            { model | feed = x } ! []
 
-        GotFeed (Err x) ->
-            { model | feed = Failure x } ! []
+        GotItem x ->
+            { model | item = x } ! []
 
-        GotItem (Ok x) ->
-            { model | item = Success x } ! []
-
-        GotItem (Err x) ->
-            { model | feed = Failure x } ! []
-
-        GotUser (Ok x) ->
-            { model | user = Success x } ! []
-
-        GotUser (Err x) ->
-            { model | feed = Failure x } ! []
+        GotUser x ->
+            { model | user = x } ! []
 
 
 view : Model -> Html Msg
@@ -106,28 +95,11 @@ view { route, feed, item, user } =
         ]
 
 
-handleViewState : (a -> Html Msg) -> RemoteData a -> Html Msg
-handleViewState successView remoteData =
-    case remoteData of
-        NotAsked ->
-            viewLoading
-
-        Loading ->
-            viewLoading
-
-        Failure _ ->
-            viewLoading
-
-        Success x ->
-            successView x
-
-
 headerView : Route -> Html Msg
-headerView currentRoute =
+headerView route =
     header []
         [ strong [] [ text "logo" ]
-        , nav [] <|
-            List.map (headerLink currentRoute) [ Top, New, Ask, Show, Jobs ]
+        , nav [] (List.map (headerLink route) [ Top, New, Ask, Show, Jobs ])
         ]
 
 
@@ -145,18 +117,17 @@ listView xs =
 
 
 listViewItem : Int -> Item -> Html Msg
-listViewItem index item =
+listViewItem index { id, title, domain, points, user, commentsCount, timeAgo } =
     li []
-        [ span [ class "index" ] [ text <| toString <| index + 1 ]
-        , div [ class "list-item-content" ]
-            [ link (Route.ItemRoute item.id) [] [ text item.title ]
-            , span [ class "domain" ] [ maybeText "" item.domain ]
+        [ span [ class "index" ] [ text (toString (index + 1)) ]
+        , div []
+            [ link (Route.ItemRoute id) [] [ text title ]
+            , span [ class "domain" ] [ text domain ]
             , footer []
-                [ span [] [ text (toString item.points) ]
-                , text " points by "
-                , link (Route.User (Maybe.withDefault "" item.user)) [] [ maybeText "No user found" item.user ]
-                , text (" " ++ item.timeAgo ++ " | ")
-                , link (Route.ItemRoute item.id) [] [ text <| toString item.commentsCount ++ " comments" ]
+                [ span [] [ text (toString points ++ " points") ]
+                , maybeElement user (\x -> span [] [ text " by ", link (Route.User x) [] [ text x ] ])
+                , text (" " ++ timeAgo ++ " | ")
+                , link (Route.ItemRoute id) [] [ text (toString commentsCount ++ " comments") ]
                 ]
             ]
         ]
@@ -167,7 +138,7 @@ itemView item =
     article []
         [ section [ class "item-article" ]
             [ h2 [] [ text item.title ]
-            , span [ class "domain" ] [ maybeText "" item.domain ]
+            , span [ class "domain" ] [ text item.domain ]
             , footer []
                 [ span [] [ text (toString item.points) ]
                 , text " points by "
@@ -188,16 +159,14 @@ commentsView xs =
 
 
 commentView : Item -> Html Msg
-commentView item =
+commentView { user, timeAgo, comments, content } =
     li []
         [ div [ class "comment-meta" ]
-            [ link (Route.User <| Maybe.withDefault "" item.user)
-                []
-                [ text <| Maybe.withDefault "" item.user ]
-            , text (" " ++ item.timeAgo)
+            [ maybeElement user (\x -> link (Route.User x) [] [ text x ])
+            , text (" " ++ timeAgo)
             ]
-        , Markdown.toHtml [] item.content
-        , commentsView (getComments item.comments)
+        , Markdown.toHtml [] content
+        , commentsView (getComments comments)
         ]
 
 
@@ -226,11 +195,37 @@ viewLoading =
     div [ class "loader" ] [ div [ class "spinner" ] [] ]
 
 
+handleViewState : (a -> Html Msg) -> RemoteData a -> Html Msg
+handleViewState successView remoteData =
+    case remoteData of
+        NotAsked ->
+            viewLoading
+
+        Loading ->
+            viewLoading
+
+        Failure _ ->
+            viewLoading
+
+        Success x ->
+            successView x
+
+
 getComments : Comments -> List Item
 getComments x =
     case x of
         Comments xs ->
             xs
+
+
+maybeElement : Maybe a -> (a -> Html Msg) -> Html Msg
+maybeElement m element =
+    case m of
+        Just x ->
+            element x
+
+        Nothing ->
+            text ""
 
 
 
@@ -242,21 +237,32 @@ endpoint =
     "https://hnpwa.com/api/v0/"
 
 
+requestItem : Int -> Cmd Msg
 requestItem x =
-    request GotItem decodeItem (endpoint ++ "item/" ++ toString x ++ ".json")
+    Http.get (endpoint ++ "item/" ++ toString x ++ ".json") decodeItem
+        |> Http.send (toRemoteDate >> GotItem)
 
 
+requestUser : String -> Cmd Msg
 requestUser x =
-    request GotUser decodeUser (endpoint ++ "user/" ++ x ++ ".json")
+    Http.get (endpoint ++ "user/" ++ x ++ ".json") decodeUser
+        |> Http.send (toRemoteDate >> GotUser)
 
 
+requestFeed : Route -> Cmd Msg
 requestFeed route =
-    request GotFeed decodeFeed (endpoint ++ .api (Route.toRouteData route) ++ ".json")
+    Http.get (endpoint ++ .api (Route.toRouteData route) ++ ".json") decodeFeed
+        |> Http.send (toRemoteDate >> GotFeed)
 
 
-request : (Result Http.Error a -> Msg) -> D.Decoder a -> String -> Cmd Msg
-request msg decoder url =
-    Http.send msg (Http.get url decoder)
+toRemoteDate : Result Http.Error a -> RemoteData a
+toRemoteDate result =
+    case result of
+        Err e ->
+            Failure e
+
+        Ok x ->
+            Success x
 
 
 decodeFeed : D.Decoder (List Item)
@@ -273,7 +279,7 @@ decodeItem =
         |> P.optional "user" (D.nullable D.string) Nothing
         |> P.required "time_ago" D.string
         |> P.optional "url" (D.nullable D.string) Nothing
-        |> P.optional "domain" (D.nullable D.string) Nothing
+        |> P.optional "domain" D.string ""
         |> P.required "comments_count" D.int
         |> P.optional "comments" decodeComments (Comments [])
         |> P.optional "content" D.string ""
@@ -334,7 +340,7 @@ type alias Item =
     , user : Maybe String
     , timeAgo : String
     , url : Maybe String
-    , domain : Maybe String
+    , domain : String
     , commentsCount : Int
     , comments : Comments
     , content : String
