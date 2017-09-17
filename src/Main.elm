@@ -26,62 +26,34 @@ main =
 
 type alias Model =
     { route : Route
-    , feed : Dict String (List Int)
-    , items : Dict Int Item
-    , users : Dict String User
+    , feed : RemoteData (List Item)
+    , item : RemoteData Item
+    , user : RemoteData User
     }
-
-
-type alias Item =
-    { id : Int
-    , title : String
-    , points : Int
-    , user : Maybe String
-    , time : Float
-    , timeAgo : String
-    , type_ : String
-    , url : Maybe String
-    , domain : Maybe String
-    , commentsCount : Int
-    , comments : Comments
-    , content : String
-    , deleted : Bool
-    , dead : Bool
-    , level : Int
-    }
-
-
-type alias User =
-    { about : String
-    , created : String
-    , id : String
-    , karma : Int
-    }
-
-
-type Comments
-    = Comments (List Item)
 
 
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
-    { route = parseLocation location
-    , feed = Dict.empty
-    , items = Dict.empty
-    , users = Dict.empty
-    }
-        ! [ getCmd (parseLocation location) ]
+    parseRoute (parseLocation location)
 
 
+parseRoute : Route -> ( Model, Cmd Msg )
+parseRoute route =
+    case route of
+        User x ->
+            ( Model route NotAsked NotAsked Loading, requestUser x )
 
--- ! [ getCmd (parseLocation location), preLoadFeeds (parseLocation location) ]
+        ItemRoute x ->
+            ( Model route NotAsked Loading NotAsked, requestItem x )
+
+        _ ->
+            ( Model route Loading NotAsked NotAsked, requestFeed route )
 
 
 type Msg
     = NewUrl String
     | UrlChange Location
     | GotFeed (Result Http.Error (List Item))
-    | GotPreLoadedFeed (Result Http.Error (List (List Item)))
     | GotItem (Result Http.Error Item)
     | GotUser (Result Http.Error User)
 
@@ -93,88 +65,61 @@ update msg model =
             model ! [ Navigation.newUrl url ]
 
         UrlChange location ->
-            let
-                route =
-                    parseLocation location
-            in
-            { model | route = route } ! [ getCmd route ]
+            parseRoute (parseLocation location)
 
         GotFeed (Ok xs) ->
-            let
-                routeTitle =
-                    Route.toRouteData model.route |> .title
-
-                feed =
-                    Dict.insert routeTitle (List.map .id xs) model.feed
-
-                insert x d =
-                    Dict.insert x.id x d
-
-                items =
-                    List.foldl insert model.items xs
-            in
-            { model | feed = feed, items = items } ! []
+            { model | feed = Success xs } ! []
 
         GotFeed (Err x) ->
-            Debug.log (toString x) model ! []
-
-        GotPreLoadedFeed (Ok x) ->
-            model ! []
-
-        GotPreLoadedFeed (Err x) ->
-            model ! []
+            { model | feed = Failure x } ! []
 
         GotItem (Ok x) ->
-            { model | items = Dict.insert x.id x model.items } ! []
+            { model | item = Success x } ! []
 
         GotItem (Err x) ->
-            Debug.log (toString x) model ! []
+            { model | feed = Failure x } ! []
 
         GotUser (Ok x) ->
-            { model | users = Dict.insert x.id x model.users } ! []
+            { model | user = Success x } ! []
 
         GotUser (Err x) ->
-            Debug.log (toString x) model ! []
+            { model | feed = Failure x } ! []
 
 
 view : Model -> Html Msg
-view model =
+view { route, feed, item, user } =
     let
-        currentView =
-            case model.route of
-                ItemRoute x ->
-                    case Dict.get x model.items of
-                        Just x ->
-                            itemView x
+        activeView =
+            case route of
+                ItemRoute _ ->
+                    handleViewState itemView item
 
-                        Nothing ->
-                            viewLoading
-
-                User x ->
-                    case Dict.get x model.users of
-                        Just x ->
-                            userView x
-
-                        Nothing ->
-                            viewLoading
+                User _ ->
+                    handleViewState userView user
 
                 _ ->
-                    case Dict.get (toRouteData model.route |> .title) model.feed of
-                        Just xs ->
-                            listView (getFeedFromItems xs model.items)
-
-                        Nothing ->
-                            viewLoading
+                    handleViewState listView feed
     in
     main_ []
-        [ headerView model.route
-        , currentView
+        [ headerView route
+        , activeView
         ]
 
 
-getFeedFromItems : List Int -> Dict Int Item -> List Item
-getFeedFromItems feed items =
-    List.filterMap (flip Dict.get items) feed
+handleViewState : (a -> Html Msg) -> RemoteData a -> Html Msg
+handleViewState successView remoteData =
+    case remoteData of
+        NotAsked ->
+            viewLoading
+
+        Loading ->
+            viewLoading
+
+        Failure _ ->
+            viewLoading
+
+        Success x ->
+            successView x
 
 
 headerView : Route -> Html Msg
@@ -292,39 +237,26 @@ getComments x =
 -- HTTP
 
 
+endpoint : String
 endpoint =
     "https://hnpwa.com/api/v0/"
 
 
-getCmd : Route -> Cmd Msg
-getCmd route =
-    case route of
-        ItemRoute id ->
-            request GotItem decodeItem (endpoint ++ "item/" ++ toString id ++ ".json")
+requestItem x =
+    request GotItem decodeItem (endpoint ++ "item/" ++ toString x ++ ".json")
 
-        User id ->
-            request GotUser decodeUser (endpoint ++ "user/" ++ id ++ ".json")
 
-        _ ->
-            request GotFeed decodeFeed (endpoint ++ .api (Route.toRouteData route) ++ ".json")
+requestUser x =
+    request GotUser decodeUser (endpoint ++ "user/" ++ x ++ ".json")
+
+
+requestFeed route =
+    request GotFeed decodeFeed (endpoint ++ .api (Route.toRouteData route) ++ ".json")
 
 
 request : (Result Http.Error a -> Msg) -> D.Decoder a -> String -> Cmd Msg
 request msg decoder url =
     Http.send msg (Http.get url decoder)
-
-
-preLoadFeeds route =
-    let
-        makeTask x =
-            Http.get ("https://hnpwa.com/api/v0/" ++ (.api <| Route.toRouteData x) ++ ".json") decodeFeed
-                |> Http.toTask
-
-        otherRoutes =
-            List.filter ((/=) route) [ Top, New, Ask, Show, Jobs ]
-    in
-    Task.sequence (List.map makeTask otherRoutes)
-        |> Task.attempt GotPreLoadedFeed
 
 
 decodeFeed : D.Decoder (List Item)
@@ -339,17 +271,12 @@ decodeItem =
         |> P.optional "title" D.string "No title"
         |> P.optional "points" D.int 0
         |> P.optional "user" (D.nullable D.string) Nothing
-        |> P.required "time" D.float
         |> P.required "time_ago" D.string
-        |> P.required "type" D.string
         |> P.optional "url" (D.nullable D.string) Nothing
         |> P.optional "domain" (D.nullable D.string) Nothing
         |> P.required "comments_count" D.int
         |> P.optional "comments" decodeComments (Comments [])
         |> P.optional "content" D.string ""
-        |> P.optional "deleted" D.bool False
-        |> P.optional "dead" D.bool False
-        |> P.optional "level" D.int 0
 
 
 decodeUser : D.Decoder User
@@ -387,3 +314,40 @@ onClickPreventDefault urlPath =
 maybeText : String -> Maybe String -> Html Msg
 maybeText default maybeValue =
     Html.text <| Maybe.withDefault default maybeValue
+
+
+
+-- TYPES
+
+
+type RemoteData a
+    = NotAsked
+    | Loading
+    | Failure Http.Error
+    | Success a
+
+
+type alias Item =
+    { id : Int
+    , title : String
+    , points : Int
+    , user : Maybe String
+    , timeAgo : String
+    , url : Maybe String
+    , domain : Maybe String
+    , commentsCount : Int
+    , comments : Comments
+    , content : String
+    }
+
+
+type alias User =
+    { about : String
+    , created : String
+    , id : String
+    , karma : Int
+    }
+
+
+type Comments
+    = Comments (List Item)
