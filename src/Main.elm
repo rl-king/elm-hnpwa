@@ -11,6 +11,7 @@ import Markdown exposing (..)
 import Navigation exposing (Location)
 import Result exposing (..)
 import Route exposing (..)
+import Task exposing (..)
 
 
 main : Program Never Model Msg
@@ -19,7 +20,7 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = \x -> Sub.none
+        , subscriptions = \_ -> Sub.none
         }
 
 
@@ -27,6 +28,7 @@ type alias Model =
     { route : Route
     , feed : Dict String (List Int)
     , items : Dict Int Item
+    , users : Dict String User
     }
 
 
@@ -49,6 +51,15 @@ type alias Item =
     }
 
 
+type alias User =
+    { about : String
+    , createdTime : Float
+    , created : String
+    , id : String
+    , karma : Int
+    }
+
+
 type Comments
     = Comments (List Item)
 
@@ -58,25 +69,18 @@ init location =
     { route = parseLocation location
     , feed = Dict.empty
     , items = Dict.empty
+    , users = Dict.empty
     }
-        ! [ urlChangeCmd (parseLocation location) ]
-
-
-urlChangeCmd : Route -> Cmd Msg
-urlChangeCmd route =
-    case route of
-        ItemRoute x ->
-            requestItem route
-
-        _ ->
-            requestFeed route
+        ! [ getCmd (parseLocation location), preLoadFeeds (parseLocation location) ]
 
 
 type Msg
     = NewUrl String
     | UrlChange Location
     | GotFeed (Result Http.Error (List Item))
+    | GotPreLoadedFeed (Result Http.Error (List (List Item)))
     | GotItem (Result Http.Error Item)
+    | GotUser (Result Http.Error User)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -90,7 +94,7 @@ update msg model =
                 route =
                     parseLocation location
             in
-            { model | route = route } ! [ urlChangeCmd route ]
+            { model | route = route } ! [ getCmd route ]
 
         GotFeed (Ok xs) ->
             let
@@ -111,10 +115,22 @@ update msg model =
         GotFeed (Err x) ->
             Debug.log (toString x) model ! []
 
+        GotPreLoadedFeed (Ok x) ->
+            model ! []
+
+        GotPreLoadedFeed (Err x) ->
+            model ! []
+
         GotItem (Ok x) ->
             { model | items = Dict.insert x.id x model.items } ! []
 
         GotItem (Err x) ->
+            Debug.log (toString x) model ! []
+
+        GotUser (Ok x) ->
+            { model | users = Dict.insert x.id x model.users } ! []
+
+        GotUser (Err x) ->
             Debug.log (toString x) model ! []
 
 
@@ -129,7 +145,7 @@ view model =
                             itemView x
 
                         Nothing ->
-                            div [] []
+                            viewLoading
 
                 _ ->
                     case Dict.get (toRouteData model.route |> .title) model.feed of
@@ -137,7 +153,7 @@ view model =
                             listView (getFeedFromItems xs model.items)
 
                         Nothing ->
-                            div [] [ text "loading" ]
+                            viewLoading
     in
     main_ []
         [ headerView model.route
@@ -193,7 +209,7 @@ listViewItem index item =
 itemView : Item -> Html Msg
 itemView item =
     article []
-        [ section []
+        [ section [ class "item-article" ]
             [ h2 [] [ text item.title ]
             , span [ class "domain" ] [ maybeText "" item.domain ]
             , footer []
@@ -229,6 +245,11 @@ commentView item =
         ]
 
 
+viewLoading : Html Msg
+viewLoading =
+    div [ class "loader" ] [ div [ class "spinner" ] [] ]
+
+
 getComments : Comments -> List Item
 getComments x =
     case x of
@@ -240,26 +261,39 @@ getComments x =
 -- HTTP
 
 
-getUrl : Route -> String
-getUrl route =
+endpoint =
+    "https://hnpwa.com/api/v0/"
+
+
+getCmd : Route -> Cmd Msg
+getCmd route =
     case route of
         ItemRoute id ->
-            "https://hnpwa.com/api/v0/item/" ++ toString id ++ ".json"
+            request GotItem decodeItem (endpoint ++ "/item/" ++ toString id ++ ".json")
+
+        User id ->
+            request GotUser decodeUser (endpoint ++ "/user/" ++ toString id ++ ".json")
 
         _ ->
-            "https://hnpwa.com/api/v0/" ++ (.api <| Route.toRouteData route) ++ ".json"
+            request GotFeed decodeFeed (endpoint ++ .api (Route.toRouteData route) ++ ".json")
 
 
-requestFeed : Route -> Cmd Msg
-requestFeed route =
-    Http.get (getUrl route) decodeFeed
-        |> Http.send GotFeed
+request : (Result Http.Error a -> Msg) -> D.Decoder a -> String -> Cmd Msg
+request msg decoder url =
+    Http.send msg (Http.get url decoder)
 
 
-requestItem : Route -> Cmd Msg
-requestItem route =
-    Http.get (getUrl route) decodeItem
-        |> Http.send GotItem
+preLoadFeeds route =
+    let
+        makeTask x =
+            Http.get ("https://hnpwa.com/api/v0/" ++ (.api <| Route.toRouteData x) ++ ".json") decodeFeed
+                |> Http.toTask
+
+        otherRoutes =
+            List.filter ((/=) route) [ Top, New, Ask, Show, Jobs ]
+    in
+    Task.sequence (List.map makeTask otherRoutes)
+        |> Task.attempt GotPreLoadedFeed
 
 
 decodeFeed : D.Decoder (List Item)
@@ -285,6 +319,16 @@ decodeItem =
         |> P.optional "deleted" D.bool False
         |> P.optional "dead" D.bool False
         |> P.optional "level" D.int 0
+
+
+decodeUser : D.Decoder User
+decodeUser =
+    P.decode User
+        |> P.optional "title" D.string ""
+        |> P.required "create_time" D.float
+        |> P.required "create" D.string
+        |> P.required "id" D.string
+        |> P.required "ikarma" D.int
 
 
 decodeComments : Decoder Comments

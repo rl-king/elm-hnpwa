@@ -1,3 +1,10 @@
+$w1 : #EEE;
+$w2 : #CCC;
+$g1 : #666;
+$g2 : #999;
+$b1 : #111;
+$b2 : #222;
+
 html {
     font-size: 87.5%;
 }
@@ -16,11 +23,16 @@ p {
 
 a {
     text-decoration: none;
-    color: #000;
-}
+    color: $b1;
 
-a:visited {
-    color: #666;
+    &:visited {
+        color: $b2;
+        text-decoration: underline;
+    }
+
+    &:hover {
+        text-decoration: underline;
+    }
 }
 
 h2 {
@@ -37,12 +49,8 @@ ul {
     margin-top: 0;
 }
 
-li a:hover {
-    text-decoration: underline;
-}
-
 header {
-    background-color: #eee;
+    background-color: $w1;
     padding: 0 1.5rem;
     display: flex;
     height: 3rem;
@@ -68,7 +76,7 @@ nav {
     li {
         padding: .5rem 1.5rem;
         display: flex;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid $w1;
     }
 
     .domain {
@@ -77,17 +85,17 @@ nav {
 }
 
 .domain {
-    color: #999;
+    color: $g2;
     font-size: .75rem;
 }
 
 li footer {
     margin-top: .25rem;
     font-size: .875rem;
-    color: #666;
+    color: $g1;
 
     a {
-        color: #666;
+        color: $g1;
         text-decoration: underline;
     }
 }
@@ -98,7 +106,7 @@ li footer {
     margin-right: 1rem;
     min-width: 1rem;
     font-weight: 500;
-    color: #666;
+    color: $g1;
 }
 
 article {
@@ -115,8 +123,13 @@ article {
     ul {
         margin-top: 1rem;
         padding-left: 1.5rem;
-        border-left: 1px solid #ccc;
+        border-left: 1px solid $g2;
     }
+}
+
+.item-article {
+    border-bottom: 1px solid $w1;
+    padding-bottom: 1rem;
 }
 
 .comments-view {
@@ -126,9 +139,9 @@ article {
 .comment-meta {
     margin-top: .25rem;
     font-size: .875rem;
-    color: #999;
+    color: $g2;
 
     a {
-        color: #999;
+        color: $g2;
     }
 }

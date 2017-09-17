@@ -1,17 +1,42 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <title>Elm HNPWA</title>
+    <style>
+        .loader {
+            position: fixed;
+            top: 40%;
+            left: calc(50% - 36px)
+        }
 
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 2px solid rgb(243, 243, 243);
+            border-radius: 50%;
+            border-top-color: #CCC;
+            animation: spin .5s linear infinite;
+            margin: 6px;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to {transform: rotate(360deg);}
+        }
+    </style>
     <!-- <link rel="shortcut icon" type="image/x-icon" href="favicon.ico"/> -->
-  </head>
+</head>
 
-  <body>
+<body>
 
+    <div class="loader">
+        <div class="spinner"></div>
+    </div>
     <div id="main"></div>
 
-  </body>
+</body>
 
-  </html>
+</html>
