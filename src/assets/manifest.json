@@ -1,0 +1,20 @@
+{
+    "name": "Elm Hacker News NPWA",
+    "short_name": "Elm HNPWA",
+    "start_url": "/",
+    "display": "standalone",
+    "theme_color": "#EEE",
+    "background_color": "#EEE",
+    "icons": [
+        {
+            "src": "images/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "images/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

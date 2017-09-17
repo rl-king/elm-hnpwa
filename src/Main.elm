@@ -53,7 +53,6 @@ type alias Item =
 
 type alias User =
     { about : String
-    , createdTime : Float
     , created : String
     , id : String
     , karma : Int
@@ -71,7 +70,11 @@ init location =
     , items = Dict.empty
     , users = Dict.empty
     }
-        ! [ getCmd (parseLocation location), preLoadFeeds (parseLocation location) ]
+        ! [ getCmd (parseLocation location) ]
+
+
+
+-- ! [ getCmd (parseLocation location), preLoadFeeds (parseLocation location) ]
 
 
 type Msg
@@ -143,6 +146,14 @@ view model =
                     case Dict.get x model.items of
                         Just x ->
                             itemView x
+
+                        Nothing ->
+                            viewLoading
+
+                User x ->
+                    case Dict.get x model.users of
+                        Just x ->
+                            userView x
 
                         Nothing ->
                             viewLoading
@@ -245,6 +256,26 @@ commentView item =
         ]
 
 
+userView : User -> Html Msg
+userView { id, created, karma, about } =
+    section [ class "user-view" ]
+        [ table []
+            [ row "user:" id
+            , row "created:" created
+            , row "karma:" (toString karma)
+            , row "about:" about
+            ]
+        ]
+
+
+row : String -> String -> Html Msg
+row x y =
+    tr []
+        [ td [] [ text x ]
+        , td [] [ text y ]
+        ]
+
+
 viewLoading : Html Msg
 viewLoading =
     div [ class "loader" ] [ div [ class "spinner" ] [] ]
@@ -269,10 +300,10 @@ getCmd : Route -> Cmd Msg
 getCmd route =
     case route of
         ItemRoute id ->
-            request GotItem decodeItem (endpoint ++ "/item/" ++ toString id ++ ".json")
+            request GotItem decodeItem (endpoint ++ "item/" ++ toString id ++ ".json")
 
         User id ->
-            request GotUser decodeUser (endpoint ++ "/user/" ++ toString id ++ ".json")
+            request GotUser decodeUser (endpoint ++ "user/" ++ id ++ ".json")
 
         _ ->
             request GotFeed decodeFeed (endpoint ++ .api (Route.toRouteData route) ++ ".json")
@@ -325,10 +356,9 @@ decodeUser : D.Decoder User
 decodeUser =
     P.decode User
         |> P.optional "title" D.string ""
-        |> P.required "create_time" D.float
-        |> P.required "create" D.string
+        |> P.required "created" D.string
         |> P.required "id" D.string
-        |> P.required "ikarma" D.int
+        |> P.required "karma" D.int
 
 
 decodeComments : Decoder Comments

@@ -138,6 +138,7 @@ if (isProd === true) {
                     warnings: false
                 }
             }),
+
             new SWPrecacheWebpackPlugin({
                 cacheId: 'elmhnpwa',
                 dontCacheBustUrlsMatching: /\.\w{8}\./,

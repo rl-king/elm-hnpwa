@@ -27,7 +27,6 @@ a {
 
     &:visited {
         color: $b2;
-        text-decoration: underline;
     }
 
     &:hover {
@@ -144,4 +143,8 @@ article {
     a {
         color: $g2;
     }
+}
+
+.user-view {
+    padding: 1rem 1.5rem;
 }
