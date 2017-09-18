@@ -30,22 +30,22 @@ type alias Model =
     }
 
 
+
+--INIT
+
+
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
-    parseRoute (parseLocation location)
+    toRequest
+        { route = parseLocation location
+        , feed = NotAsked
+        , item = NotAsked
+        , user = NotAsked
+        }
 
 
-parseRoute : Route -> ( Model, Cmd Msg )
-parseRoute route =
-    case route of
-        User x ->
-            ( Model route NotAsked NotAsked Loading, requestUser x )
 
-        ItemRoute x ->
-            ( Model route NotAsked Loading NotAsked, requestItem x )
-
-        _ ->
-            ( Model route Loading NotAsked NotAsked, requestFeed route )
+-- UPDATE
 
 
 type Msg
@@ -63,7 +63,7 @@ update msg model =
             model ! [ Navigation.newUrl url ]
 
         UrlChange location ->
-            parseRoute (parseLocation location)
+            toRequest { model | route = parseLocation location }
 
         GotFeed x ->
             { model | feed = x } ! []
@@ -75,10 +75,14 @@ update msg model =
             { model | user = x } ! []
 
 
+
+-- VIEW
+
+
 view : Model -> Html Msg
 view { route, feed, item, user } =
     let
-        activeView =
+        routeView =
             case route of
                 ItemRoute _ ->
                     handleViewState itemView item
@@ -91,8 +95,12 @@ view { route, feed, item, user } =
     in
     main_ []
         [ headerView route
-        , activeView
+        , routeView
         ]
+
+
+
+-- HEADER VIEW
 
 
 headerView : Route -> Html Msg
@@ -108,43 +116,41 @@ headerLink currentRoute route =
     if currentRoute == route then
         span [] [ text (Route.toTitle route) ]
     else
-        link route [] [ text (Route.toTitle route) ]
+        link route [ text (Route.toTitle route) ]
+
+
+
+-- LIST VIEW
 
 
 listView : List Item -> Html Msg
-listView xs =
-    ul [ class "list-view" ] (List.indexedMap listViewItem xs)
+listView feed =
+    ul [ class "list-view" ] (List.indexedMap listViewItem feed)
 
 
 listViewItem : Int -> Item -> Html Msg
-listViewItem index { id, title, domain, points, user, commentsCount, timeAgo } =
+listViewItem index item =
     li []
-        [ span [ class "index" ] [ text (toString (index + 1)) ]
+        [ aside [] [ text (toString (index + 1)) ]
         , div []
-            [ link (Route.ItemRoute id) [] [ text title ]
-            , span [ class "domain" ] [ text domain ]
-            , footer []
-                [ span [] [ text (toString points ++ " points") ]
-                , maybeElement user (\x -> span [] [ text " by ", link (Route.User x) [] [ text x ] ])
-                , text (" " ++ timeAgo ++ " | ")
-                , link (Route.ItemRoute id) [] [ text (toString commentsCount ++ " comments") ]
-                ]
+            [ link (Route.ItemRoute item.id) [ text item.title ]
+            , span [ class "domain" ] [ text item.domain ]
+            , itemFooter item
             ]
         ]
+
+
+
+-- ITEM VIEW
 
 
 itemView : Item -> Html Msg
 itemView item =
     article []
-        [ section [ class "item-article" ]
+        [ section []
             [ h2 [] [ text item.title ]
             , span [ class "domain" ] [ text item.domain ]
-            , footer []
-                [ span [] [ text (toString item.points) ]
-                , text " points by "
-                , link (Route.User (Maybe.withDefault "" item.user)) [] [ maybeText "No user found" item.user ]
-                , text (" " ++ item.timeAgo)
-                ]
+            , itemFooter item
             ]
         , Markdown.toHtml [] item.content
         , section [ class "comments-view" ]
@@ -153,31 +159,52 @@ itemView item =
         ]
 
 
+itemFooter : Item -> Html Msg
+itemFooter item =
+    if item.type_ == "job" then
+        footer [] [ text item.timeAgo ]
+    else
+        footer []
+            [ text (toString item.points ++ " points by ")
+            , link (Route.User item.user) [ text item.user ]
+            , text (" " ++ item.timeAgo ++ " | ")
+            , link (Route.ItemRoute item.id) [ text (toString item.commentsCount ++ " comments") ]
+            ]
+
+
+
+-- COMMENTS VIEW
+
+
 commentsView : List Item -> Html Msg
-commentsView xs =
-    ul [] (List.map commentView xs)
+commentsView comments =
+    ul [] (List.map commentView comments)
 
 
 commentView : Item -> Html Msg
-commentView { user, timeAgo, comments, content } =
+commentView item =
     li []
         [ div [ class "comment-meta" ]
-            [ maybeElement user (\x -> link (Route.User x) [] [ text x ])
-            , text (" " ++ timeAgo)
+            [ link (Route.User item.user) [ text item.user ]
+            , text (" " ++ item.timeAgo)
             ]
-        , Markdown.toHtml [] content
-        , commentsView (getComments comments)
+        , Markdown.toHtml [] item.content
+        , commentsView (getComments item.comments)
         ]
 
 
+
+-- USER VIEW
+
+
 userView : User -> Html Msg
-userView { id, created, karma, about } =
+userView user =
     section [ class "user-view" ]
         [ table []
-            [ row "user:" id
-            , row "created:" created
-            , row "karma:" (toString karma)
-            , row "about:" about
+            [ row "user:" user.id
+            , row "created:" user.created
+            , row "karma:" (toString user.karma)
+            , row "about:" user.about
             ]
         ]
 
@@ -190,25 +217,48 @@ row x y =
         ]
 
 
-viewLoading : Html Msg
-viewLoading =
-    div [ class "loader" ] [ div [ class "spinner" ] [] ]
+
+-- VIEW HELPERS
 
 
 handleViewState : (a -> Html Msg) -> RemoteData a -> Html Msg
 handleViewState successView remoteData =
     case remoteData of
         NotAsked ->
-            viewLoading
+            loadingView
 
         Loading ->
-            viewLoading
+            loadingView
 
-        Failure _ ->
-            viewLoading
+        Failure e ->
+            errorView e
 
         Success x ->
             successView x
+
+
+loadingView : Html Msg
+loadingView =
+    div [ class "loader" ] [ div [ class "spinner" ] [] ]
+
+
+errorView : Http.Error -> Html Msg
+errorView error =
+    div [ class "loader" ] [ text (toString error) ]
+
+
+link : Route -> List (Html Msg) -> Html Msg
+link route kids =
+    a [ href (Route.toUrl route), onClickPreventDefault (Route.toUrl route) ] kids
+
+
+onClickPreventDefault : String -> Attribute Msg
+onClickPreventDefault urlPath =
+    onWithOptions "click"
+        { preventDefault = True
+        , stopPropagation = False
+        }
+        (D.succeed <| NewUrl urlPath)
 
 
 getComments : Comments -> List Item
@@ -218,14 +268,21 @@ getComments x =
             xs
 
 
-maybeElement : Maybe a -> (a -> Html Msg) -> Html Msg
-maybeElement m element =
-    case m of
-        Just x ->
-            element x
 
-        Nothing ->
-            text ""
+-- ROUTE TO REQUEST
+
+
+toRequest : Model -> ( Model, Cmd Msg )
+toRequest model =
+    case model.route of
+        User x ->
+            { model | user = Loading } ! [ requestUser x ]
+
+        ItemRoute x ->
+            { model | item = Loading } ! [ requestItem x ]
+
+        _ ->
+            { model | feed = Loading } ! [ requestFeed model.route ]
 
 
 
@@ -280,13 +337,14 @@ decodeItem =
         |> P.required "id" D.int
         |> P.optional "title" D.string "No title"
         |> P.optional "points" D.int 0
-        |> P.optional "user" (D.nullable D.string) Nothing
+        |> P.optional "user" D.string "No user found"
         |> P.required "time_ago" D.string
         |> P.optional "url" (D.nullable D.string) Nothing
         |> P.optional "domain" D.string ""
         |> P.required "comments_count" D.int
         |> P.optional "comments" decodeComments (Comments [])
         |> P.optional "content" D.string ""
+        |> P.required "type" D.string
 
 
 decodeUser : D.Decoder User
@@ -304,29 +362,6 @@ decodeComments =
 
 
 
--- TODO Fix ctrl click
-
-
-link : Route -> List (Attribute Msg) -> List (Html Msg) -> Html Msg
-link route attrs kids =
-    a (attrs ++ [ href (Route.toUrl route), onClickPreventDefault (Route.toUrl route) ]) kids
-
-
-onClickPreventDefault : String -> Attribute Msg
-onClickPreventDefault urlPath =
-    onWithOptions "click"
-        { preventDefault = True
-        , stopPropagation = False
-        }
-        (D.succeed <| NewUrl urlPath)
-
-
-maybeText : String -> Maybe String -> Html Msg
-maybeText default maybeValue =
-    Html.text <| Maybe.withDefault default maybeValue
-
-
-
 -- TYPES
 
 
@@ -341,13 +376,14 @@ type alias Item =
     { id : Int
     , title : String
     , points : Int
-    , user : Maybe String
+    , user : String
     , timeAgo : String
     , url : Maybe String
     , domain : String
     , commentsCount : Int
     , comments : Comments
     , content : String
+    , type_ : String
     }
 
 

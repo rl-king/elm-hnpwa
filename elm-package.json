@@ -1,7 +1,7 @@
 {
     "version": "1.0.0",
     "summary": "Elm HNPWA",
-    "repository": "https://github.com/rlking/elmhnpwa.git",
+    "repository": "https://github.com/rlking/elm-hnpwa.git",
     "license": "MIT",
     "source-directories": [
         "src"
