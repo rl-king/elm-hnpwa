@@ -1,4 +1,4 @@
-# Elm Hacker News Progressive Web App | Work in progres
+# Elm Hacker News Progressive Web App | Work in progress
 
 ## TODO
 - RemoteData Failure specific view / offline view
