@@ -1,5 +1,6 @@
-$w1 : #EEE;
-$w2 : #CCC;
+$w1 : #F9F9F9;
+$w2 : #EEE;
+$w3 : #CCC;
 $g1 : #999;
 $g2 : #666;
 $b1 : #111;
@@ -51,16 +52,17 @@ ul {
 
 header {
     background-color: $w1;
+    border-bottom: 1px solid $w2;
     padding: 0 1.5rem;
     display: flex;
-    height: 3rem;
+    height: 3.5rem;
     align-items: center;
     font-weight: 500;
     margin-bottom: 0.15rem;
 }
 
 header span {
-    color: teal;
+    border-bottom: 3px solid $w3;
 }
 
 nav {
@@ -76,7 +78,7 @@ nav {
     li {
         padding: .5rem 1.5rem;
         display: flex;
-        border-bottom: 1px solid $w1;
+        border-bottom: 1px solid $w2;
     }
 
     .domain {
@@ -123,7 +125,7 @@ article {
     ul {
         margin-top: 1rem;
         padding-left: 1.5rem;
-        border-left: 1px solid $w1;
+        border-left: 1px solid $w3;
     }
 
     section {

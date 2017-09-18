@@ -10,6 +10,8 @@ import Markdown exposing (toHtml)
 import Navigation exposing (Location)
 import Result exposing (..)
 import Route exposing (..)
+import Svg
+import Svg.Attributes as SA
 
 
 main : Program Never Model Msg
@@ -106,7 +108,7 @@ view { route, feed, item, user } =
 headerView : Route -> Html Msg
 headerView route =
     header []
-        [ strong [] [ text "logo" ]
+        [ logo
         , nav [] (List.map (headerLink route) [ Top, New, Ask, Show, Jobs ])
         ]
 
@@ -233,6 +235,9 @@ handleViewState successView remoteData =
         Failure e ->
             errorView e
 
+        Updating x ->
+            div [] [ loadingView, successView x ]
+
         Success x ->
             successView x
 
@@ -253,12 +258,12 @@ link route kids =
 
 
 onClickPreventDefault : String -> Attribute Msg
-onClickPreventDefault urlPath =
+onClickPreventDefault url =
     onWithOptions "click"
         { preventDefault = True
         , stopPropagation = False
         }
-        (D.succeed <| NewUrl urlPath)
+        (D.succeed <| NewUrl url)
 
 
 getComments : Comments -> List Item
@@ -279,10 +284,23 @@ toRequest model =
             { model | user = Loading } ! [ requestUser x ]
 
         ItemRoute x ->
-            { model | item = Loading } ! [ requestItem x ]
+            case model.feed of
+                Success xs ->
+                    { model | item = itemFromFeed x xs } ! [ requestItem x ]
+
+                _ ->
+                    { model | item = Loading } ! [ requestItem x ]
 
         _ ->
             { model | feed = Loading } ! [ requestFeed model.route ]
+
+
+itemFromFeed : Int -> List Item -> RemoteData Item
+itemFromFeed x y =
+    List.filter ((==) x << .id) y
+        |> List.head
+        |> Maybe.map Updating
+        |> Maybe.withDefault NotAsked
 
 
 
@@ -369,6 +387,7 @@ type RemoteData a
     = NotAsked
     | Loading
     | Failure Http.Error
+    | Updating a
     | Success a
 
 
@@ -397,3 +416,20 @@ type alias User =
 
 type Comments
     = Comments (List Item)
+
+
+
+-- LOGO
+
+
+logo : Svg.Svg Msg
+logo =
+    Svg.svg [ width 25, height 26, SA.viewBox "0 0 25 26" ]
+        [ Svg.g [ SA.fill "none" ]
+            [ Svg.path [ SA.fill "#F0AD00", SA.d "M12.4 6l5.3.2L12.3.8m0 12.5v5.3l5.4-5.3" ] []
+            , Svg.path [ SA.fill "#7FD13B", SA.d "M12.3 25v-5.3l6-6v5.5m-6-12.4h6v5.8h-6z" ] []
+            , Svg.path [ SA.fill "#60B5CC", SA.d "M19 18.4l5.3-5.4L19 7.5" ] []
+            , Svg.path [ SA.fill "#5A6378", SA.d "M11.7.8H0l11.7 11.7" ] []
+            , Svg.path [ SA.fill "#60B5CC", SA.d "M11.7 25.2V13.5L0 25.2" ] []
+            ]
+        ]
