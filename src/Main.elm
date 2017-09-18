@@ -135,11 +135,19 @@ listViewItem index item =
     li []
         [ aside [] [ text (toString (index + 1)) ]
         , div []
-            [ link (Route.ItemRoute item.id) [ text item.title ]
+            [ itemUrl item.id item.url item.title
             , span [ class "domain" ] [ text item.domain ]
             , itemFooter item
             ]
         ]
+
+
+itemUrl : Int -> String -> String -> Html Msg
+itemUrl id url title =
+    if String.contains "item?id=" url then
+        link (Route.ItemRoute id) [ text title ]
+    else
+        a [ href url, target "_blank" ] [ text title ]
 
 
 
@@ -357,7 +365,7 @@ decodeItem =
         |> P.optional "points" D.int 0
         |> P.optional "user" D.string "No user found"
         |> P.required "time_ago" D.string
-        |> P.optional "url" (D.nullable D.string) Nothing
+        |> P.optional "url" D.string ""
         |> P.optional "domain" D.string ""
         |> P.required "comments_count" D.int
         |> P.optional "comments" decodeComments (Comments [])
@@ -397,7 +405,7 @@ type alias Item =
     , points : Int
     , user : String
     , timeAgo : String
-    , url : Maybe String
+    , url : String
     , domain : String
     , commentsCount : Int
     , comments : Comments

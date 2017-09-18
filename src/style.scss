@@ -26,14 +26,16 @@ a {
     text-decoration: none;
     color: $b1;
 
-    &:visited {
-        color: $g2;
-    }
-
     &:hover {
         text-decoration: underline;
         color: $b1;
     }
+}
+
+h1 {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-left: 1rem;
 }
 
 h2 {
@@ -66,7 +68,7 @@ header span {
 }
 
 nav {
-    margin-left: 2rem;
+    margin-left: 1rem;
 
     a,
     span {
