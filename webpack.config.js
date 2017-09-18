@@ -36,7 +36,6 @@ var commonConfig = {
         modules: ['node_modules', path.resolve(__dirname, "src")]
     },
     module: {
-        noParse: /^((?!Stylesheets).)*\.elm.*$/,
         rules: [{
             test: /\.(eot|ttf|woff|woff2|svg)$/,
             use: 'file-loader?publicPath=../../&name=Css/[hash].[ext]'
@@ -74,7 +73,7 @@ if (isDev === true) {
         module: {
             rules: [{
                 test: /\.elm$/,
-                exclude: [/elm-stuff/, /node_modules/, /Stylesheets\.elm$/],
+                exclude: [/elm-stuff/, /node_modules/],
                 use: [{
                     loader: 'elm-hot-loader'
                 },
@@ -86,11 +85,7 @@ if (isDev === true) {
             {
                 test: /\.sc?ss$/,
                 use: ['style-loader', 'css-loader', 'postcss-loader', 'sass-loader']
-            },
-            {
-                test: /Stylesheets\.elm$/,
-                use: ['style-loader', 'css-loader', 'elm-css-webpack-loader']
-            },]
+            }]
         }
     });
 }
@@ -111,14 +106,7 @@ if (isProd === true) {
                     fallback: 'style-loader',
                     use: ['css-loader', 'postcss-loader', 'sass-loader']
                 })
-            },
-            {
-                test: /Stylesheets\.elm$/,
-                use: ExtractTextPlugin.extract({
-                    fallback: "style-loader",
-                    use: ['css-loader', 'elm-css-webpack-loader']
-                })
-            },]
+            }]
         },
         plugins: [
             new ExtractTextPlugin({
@@ -126,24 +114,25 @@ if (isProd === true) {
                 allChunks: true,
             }),
             new OptimizeCssAssetsPlugin({
-                assetNameRegExp: /\.optimize\.css$/g,
+                assetNameRegExp: /\.css$/,
                 cssProcessor: require('cssnano'),
                 cssProcessorOptions: { discardComments: { removeAll: true } },
                 canPrint: true
             }),
             new webpack.optimize.UglifyJsPlugin({
                 minimize: true,
-                mangle: true,
                 compressor: {
                     warnings: false
                 }
             }),
-
+            new CopyWebpackPlugin([{
+                from: 'src/assets/',
+                to: 'assets/'
+            }]),
             new SWPrecacheWebpackPlugin({
                 cacheId: 'elmhnpwa',
-                dontCacheBustUrlsMatching: /\.\w{8}\./,
                 filename: 'service-worker.js',
-                minify: true,
+                minify: false,
                 navigateFallback: '/index.html',
                 staticFileGlobsIgnorePatterns: [/\.map$/, /asset-manifest\.json$/],
                 runtimeCaching: [
