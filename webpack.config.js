@@ -10,6 +10,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const WebpackNotifierPlugin = require('webpack-notifier');
 const SWPrecacheWebpackPlugin = require('sw-precache-webpack-plugin');
+var HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
 
 const prod = 'production';
 const dev = 'development';
@@ -42,7 +43,7 @@ var commonConfig = {
         }]
     },
     plugins: [
-        new WebpackNotifierPlugin(),
+        new HtmlWebpackInlineSourcePlugin(),
         new webpack.LoaderOptionsPlugin({
             options: {
                 postcss: [autoprefixer()]
@@ -51,7 +52,8 @@ var commonConfig = {
         new HtmlWebpackPlugin({
             template: 'src/index.html',
             filename: 'index.html',
-            inject: 'body'
+            inject: 'body',
+            inlineSource: '.(css)$'
         })
     ]
 }
@@ -86,7 +88,10 @@ if (isDev === true) {
                 test: /\.sc?ss$/,
                 use: ['style-loader', 'css-loader', 'postcss-loader', 'sass-loader']
             }]
-        }
+        },
+        plugins: [
+            new WebpackNotifierPlugin()
+        ]
     });
 }
 
@@ -127,7 +132,7 @@ if (isProd === true) {
             }),
             new CopyWebpackPlugin([{
                 from: 'src/assets/',
-                to: 'assets/'
+                to: 'dist/assets/'
             }]),
             new SWPrecacheWebpackPlugin({
                 cacheId: 'elmhnpwa',

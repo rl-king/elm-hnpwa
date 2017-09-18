@@ -154,3 +154,24 @@ article {
 .user-view {
     padding: 1rem 1.5rem;
 }
+
+.loader {
+    position: fixed;
+    top: 40%;
+    left: calc(50% - 36px)
+}
+
+.spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgb(243, 243, 243);
+    border-radius: 50%;
+    border-top-color: $g1;
+    animation: spin .5s linear infinite;
+    margin: 6px;
+    display: inline-block;
+}
+
+@keyframes spin {
+    to {transform: rotate(360deg);}
+}

@@ -25,36 +25,15 @@
     <link rel="apple-touch-icon" sizes="144x144" href="/assets/icon-144x144.png">
     <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192x192.png">
 
-    <style>
-        .loader {
-            position: fixed;
-            top: 40%;
-            left: calc(50% - 36px)
-        }
-
-        .spinner {
-            width: 36px;
-            height: 36px;
-            border: 2px solid rgb(243, 243, 243);
-            border-radius: 50%;
-            border-top-color: #CCC;
-            animation: spin .5s linear infinite;
-            margin: 6px;
-            display: inline-block;
-        }
-
-        @keyframes spin {
-            to {transform: rotate(360deg);}
-        }
-    </style>
-    <!-- <link rel="shortcut icon" type="image/x-icon" href="favicon.ico"/> -->
 </head>
 
 <body>
+    <noscript>
+        <h2>I need to execute some JS to work 😞</h2>
+    </noscript>
     <div class="loader">
         <div class="spinner"></div>
     </div>
-
 </body>
 
 </html>
