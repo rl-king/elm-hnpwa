@@ -86,6 +86,9 @@ view { route, feed, item, user } =
     let
         routeView =
             case route of
+                NotFound ->
+                    notFoundView
+
                 ItemRoute _ ->
                     handleViewState itemView item
 
@@ -252,12 +255,17 @@ handleViewState successView remoteData =
 
 loadingView : Html Msg
 loadingView =
-    div [ class "loader" ] [ div [ class "spinner" ] [] ]
+    div [ class "notification" ] [ div [ class "spinner" ] [] ]
 
 
 errorView : Http.Error -> Html Msg
 errorView error =
-    div [ class "loader" ] [ text (toString error) ]
+    div [ class "notification" ] [ text (toString error) ]
+
+
+notFoundView : Html Msg
+notFoundView =
+    div [ class "notification" ] [ text "404" ]
 
 
 link : Route -> List (Html Msg) -> Html Msg
@@ -288,6 +296,9 @@ getComments x =
 toRequest : Model -> ( Model, Cmd Msg )
 toRequest model =
     case model.route of
+        NotFound ->
+            model ! []
+
         User x ->
             { model | user = Loading } ! [ requestUser x ]
 
@@ -304,11 +315,15 @@ toRequest model =
 
 
 itemFromFeed : Int -> List Item -> RemoteData Item
-itemFromFeed x y =
-    List.filter ((==) x << .id) y
-        |> List.head
-        |> Maybe.map Updating
-        |> Maybe.withDefault NotAsked
+itemFromFeed id feed =
+    let
+        matchId x item acc =
+            if item.id == x then
+                Updating item
+            else
+                acc
+    in
+    List.foldl (matchId id) NotAsked feed
 
 
 

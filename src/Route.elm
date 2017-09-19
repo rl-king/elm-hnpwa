@@ -12,6 +12,7 @@ type Route
     | Jobs
     | ItemRoute Int
     | User String
+    | NotFound
 
 
 type alias RouteData =
@@ -73,7 +74,10 @@ toRouteData route =
         User x ->
             RouteData "User" ("/user/" ++ x) "user"
 
+        NotFound ->
+            RouteData "404" "/404" "404"
+
 
 parseLocation : Location -> Route
 parseLocation =
-    Url.parsePath route >> Maybe.withDefault Top
+    Url.parsePath route >> Maybe.withDefault NotFound
