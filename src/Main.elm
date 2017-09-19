@@ -3,7 +3,7 @@ module Main exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onWithOptions)
-import Http exposing (get, send)
+import Http exposing (Error(..), get, send)
 import Json.Decode as D exposing (..)
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import Markdown exposing (toHtml)
@@ -258,14 +258,32 @@ loadingView =
     div [ class "notification" ] [ div [ class "spinner" ] [] ]
 
 
-errorView : Http.Error -> Html Msg
-errorView error =
-    div [ class "notification" ] [ text (toString error) ]
-
-
 notFoundView : Html Msg
 notFoundView =
     div [ class "notification" ] [ text "404" ]
+
+
+errorView : Http.Error -> Html Msg
+errorView error =
+    let
+        message =
+            case error of
+                Timeout ->
+                    "Timeout"
+
+                NetworkError ->
+                    "You seem to be offline"
+
+                BadStatus x ->
+                    "The server gave me a " ++ toString x.status.code ++ " error"
+
+                BadPayload _ _ ->
+                    "The server gave me back something I did not expect"
+
+                _ ->
+                    "Woops"
+    in
+    div [ class "notification" ] [ text message ]
 
 
 link : Route -> List (Html Msg) -> Html Msg
