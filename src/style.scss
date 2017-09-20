@@ -167,11 +167,16 @@ article {
     border: 3px solid rgb(243, 243, 243);
     border-radius: 50%;
     border-top-color: $g1;
-    animation: spin .5s linear infinite;
+    animation: spin .5s linear infinite, show 0s linear .3s;
     margin: 6px;
     display: inline-block;
+    opacity: 0;
 }
 
 @keyframes spin {
     to {transform: rotate(360deg);}
+}
+
+@keyframes show {
+    to {opacity: 1;}
 }

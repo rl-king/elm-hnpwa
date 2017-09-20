@@ -12,6 +12,7 @@ import Result exposing (..)
 import Route exposing (..)
 import Svg
 import Svg.Attributes as SA
+import Task
 
 
 main : Program Never Model Msg
@@ -29,6 +30,7 @@ type alias Model =
     , feed : RemoteData (List Item)
     , item : RemoteData Item
     , user : RemoteData User
+    , routesPreFetched : Bool
     }
 
 
@@ -43,6 +45,7 @@ init location =
         , feed = NotAsked
         , item = NotAsked
         , user = NotAsked
+        , routesPreFetched = False
         }
 
 
@@ -56,6 +59,7 @@ type Msg
     | GotFeed (RemoteData (List Item))
     | GotItem (RemoteData Item)
     | GotUser (RemoteData User)
+    | PreFetched
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -68,13 +72,23 @@ update msg model =
             toRequest { model | route = parseLocation location }
 
         GotFeed x ->
-            { model | feed = x } ! []
+            let
+                cmd =
+                    if model.routesPreFetched then
+                        Cmd.none
+                    else
+                        requestOterRoutes model.route
+            in
+            { model | feed = x } ! [ cmd ]
 
         GotItem x ->
             { model | item = x } ! []
 
         GotUser x ->
             { model | user = x } ! []
+
+        PreFetched ->
+            { model | routesPreFetched = True } ! []
 
 
 
@@ -369,6 +383,22 @@ requestFeed : Route -> Cmd Msg
 requestFeed route =
     Http.get (endpoint ++ Route.toApi route ++ ".json") decodeFeed
         |> Http.send (toRemoteData >> GotFeed)
+
+
+requestOterRoutes : Route -> Cmd Msg
+requestOterRoutes route =
+    let
+        routeToTask x =
+            Http.get (endpoint ++ Route.toApi x ++ ".json") decodeFeed
+                |> Http.toTask
+
+        routesToRequest =
+            [ Top, New, Ask, Show, Jobs ]
+                |> List.filter ((/=) route)
+                |> List.map routeToTask
+                |> Task.sequence
+    in
+    Task.attempt (\_ -> PreFetched) routesToRequest
 
 
 toRemoteData : Result Http.Error a -> RemoteData a
