@@ -3,7 +3,8 @@ module Main exposing (..)
 import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onWithOptions)
+import Html.Events exposing (defaultOptions, onClick, onWithOptions)
+import Html.Lazy as Lazy
 import Http exposing (Error(..), get, send)
 import Json.Decode as D exposing (..)
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
@@ -38,7 +39,7 @@ type Page
     | UserPage User
     | LoadingPage
     | ErrorPage Http.Error
-    | MissingPage
+    | NotFound
 
 
 type alias Session =
@@ -99,29 +100,29 @@ update msg ({ session } as model) =
 view : Model -> Html Msg
 view { page, route } =
     let
-        pageView =
+        viewPage =
             case page of
+                FeedPage items ->
+                    Lazy.lazy viewList items
+
                 ItemPage item ->
                     viewItem item
 
                 UserPage user ->
                     viewUser user
 
-                FeedPage items ->
-                    viewList items
-
                 LoadingPage ->
-                    loadingView
+                    viewLoading
 
                 ErrorPage error ->
-                    errorView error
+                    viewError error
 
-                MissingPage ->
-                    loadingView
+                NotFound ->
+                    viewNotFound
     in
     main_ []
-        [ viewHeader route
-        , pageView
+        [ Lazy.lazy viewHeader route
+        , viewPage
         ]
 
 
@@ -243,67 +244,90 @@ viewUser : User -> Html Msg
 viewUser user =
     section [ class "user-view" ]
         [ table []
-            [ row "user:" user.id
-            , row "created:" user.created
-            , row "karma:" (toString user.karma)
-            , row "about:" user.about
+            [ viewRow "user:" user.id
+            , viewRow "created:" user.created
+            , viewRow "karma:" (toString user.karma)
+            , viewRow "about:" user.about
             ]
         ]
 
 
-row : String -> String -> Html Msg
-row x y =
+viewRow : String -> String -> Html Msg
+viewRow x y =
     tr []
         [ td [] [ text x ]
         , td [] [ text y ]
         ]
 
 
-loadingView : Html Msg
-loadingView =
+viewLoading : Html Msg
+viewLoading =
     div [ class "notification" ] [ div [ class "spinner" ] [] ]
 
 
-notFoundView : Html Msg
-notFoundView =
+viewNotFound : Html Msg
+viewNotFound =
     div [ class "notification" ] [ text "404" ]
 
 
-errorView : Http.Error -> Html Msg
-errorView error =
-    let
-        message =
-            case error of
-                Timeout ->
-                    "Timeout"
+viewError : Http.Error -> Html Msg
+viewError error =
+    div [ class "notification" ] [ text (htmlErrorToString error) ]
 
-                NetworkError ->
-                    "You seem to be offline"
 
-                BadStatus x ->
-                    "The server gave me a " ++ toString x.status.code ++ " error"
+htmlErrorToString : Error -> String
+htmlErrorToString error =
+    case error of
+        Timeout ->
+            "Timeout"
 
-                BadPayload _ _ ->
-                    "The server gave me back something I did not expect"
+        NetworkError ->
+            "NetworkError | You seem to be offline"
 
-                _ ->
-                    "Woops"
-    in
-    div [ class "notification" ] [ text message ]
+        BadStatus x ->
+            "BadStatus | The server gave me a " ++ toString x.status.code ++ " error"
+
+        BadPayload _ _ ->
+            "BadPayload | The server gave me back something I did not expect"
+
+        BadUrl _ ->
+            "The API seems to have changed"
+
+
+
+-- LINK HELPERS
 
 
 link : Route -> List (Html Msg) -> Html Msg
 link route kids =
-    a [ href (Route.toUrl route), onClickPreventDefault (Route.toUrl route) ] kids
+    a [ href (Route.toUrl route), onPreventDefaultClick (Route.toMsg route NewUrl) ] kids
 
 
-onClickPreventDefault : String -> Attribute Msg
-onClickPreventDefault url =
+onPreventDefaultClick : Msg -> Attribute Msg
+onPreventDefaultClick msg =
     onWithOptions "click"
-        { preventDefault = True
-        , stopPropagation = False
-        }
-        (D.succeed (NewUrl url))
+        { defaultOptions | preventDefault = True }
+        (D.andThen (eventDecoder msg) eventKeyDecoder)
+
+
+eventKeyDecoder : Decoder Bool
+eventKeyDecoder =
+    D.map2
+        (not >> xor)
+        (D.field "ctrlKey" D.bool)
+        (D.field "metaKey" D.bool)
+
+
+eventDecoder : msg -> Bool -> Decoder msg
+eventDecoder msg preventDefault =
+    if preventDefault then
+        D.succeed msg
+    else
+        D.fail ""
+
+
+
+-- COMMENT HELPER
 
 
 getComments : Comments -> List Item
@@ -363,7 +387,7 @@ checkHelper route session =
                     Get (requestUser id)
 
         Route.NotFound ->
-            Go (Ok MissingPage)
+            Go (Ok NotFound)
 
 
 
