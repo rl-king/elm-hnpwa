@@ -9,18 +9,15 @@ import Json.Decode as D exposing (..)
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import Markdown exposing (toHtml)
 import Navigation exposing (Location)
-import Result exposing (..)
 import Route exposing (Route)
-import Session exposing (Session)
 import Svg
 import Svg.Attributes as SA
-import Task
 import Types exposing (..)
 
 
 main : Program Never Model Msg
 main =
-    Navigation.program UrlChange
+    Navigation.program OnNavigation
         { init = init
         , view = view
         , update = update
@@ -36,11 +33,19 @@ type alias Model =
 
 
 type Page
-    = FeedPage (Session.Status (List Item))
-    | ItemPage
-    | UserPage
+    = FeedPage (List Item)
+    | ItemPage Item
+    | UserPage User
     | LoadingPage
-    | ErrorPage
+    | ErrorPage Http.Error
+    | MissingPage
+
+
+type alias Session =
+    { feeds : Dict.Dict String (Result Http.Error (List Item))
+    , items : Dict.Dict Int (Result Http.Error Item)
+    , users : Dict.Dict String (Result Http.Error User)
+    }
 
 
 
@@ -49,10 +54,10 @@ type Page
 
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
-    routeToRequest
-        { route = Route.parseLocation location
+    check
+        { route = Route.parse location
         , page = LoadingPage
-        , session = Session Dict.empty Dict.empty
+        , session = Session Dict.empty Dict.empty Dict.empty
         }
 
 
@@ -62,29 +67,29 @@ init location =
 
 type Msg
     = NewUrl String
-    | UrlChange Location
-    | GotFeed String (Session.Status (List Item))
-    | GotItem Int (Session.Status Item)
-
-
-
--- | GotUser (Session.Status User)
+    | OnNavigation Location
+    | GotItem Int (Result Http.Error Item)
+    | GotUser String (Result Http.Error User)
+    | GotFeed String (Result Http.Error (List Item))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg ({ session } as model) =
     case msg of
         NewUrl url ->
             ( model, Navigation.newUrl url )
 
-        UrlChange location ->
-            routeToRequest { model | route = Route.parseLocation location }
+        OnNavigation location ->
+            check { model | route = Route.parse location }
 
         GotItem id item ->
-            ( { model | session = Session.insertItem model.session id item }, Cmd.none )
+            check { model | session = { session | items = Dict.insert id item session.items } }
+
+        GotUser id user ->
+            check { model | session = { session | users = Dict.insert id user session.users } }
 
         GotFeed id feed ->
-            check { model | session = Session.insertFeed model.session id feed }
+            check { model | session = { session | feeds = Dict.insert id feed session.feeds } }
 
 
 
@@ -96,19 +101,26 @@ view { page, route } =
     let
         pageView =
             case page of
-                -- NotFound ->
-                --     notFoundView
-                -- Route.Item _ ->
-                --     handleViewState itemView item
-                -- User _ ->
-                FeedPage items ->
-                    handleViewState listView items
+                ItemPage item ->
+                    viewItem item
 
-                _ ->
-                    text "bla"
+                UserPage user ->
+                    viewUser user
+
+                FeedPage items ->
+                    viewList items
+
+                LoadingPage ->
+                    loadingView
+
+                ErrorPage error ->
+                    errorView error
+
+                MissingPage ->
+                    loadingView
     in
     main_ []
-        [ headerView route
+        [ viewHeader route
         , pageView
         ]
 
@@ -117,8 +129,8 @@ view { page, route } =
 -- HEADER VIEW
 
 
-headerView : Route -> Html Msg
-headerView route =
+viewHeader : Route -> Html Msg
+viewHeader route =
     header []
         [ logo
         , nav []
@@ -145,13 +157,13 @@ headerLink currentRoute route =
 -- LIST VIEW
 
 
-listView : List Item -> Html Msg
-listView feed =
-    ul [ class "list-view" ] (List.indexedMap listViewItem feed)
+viewList : List Item -> Html Msg
+viewList feed =
+    ul [ class "list-view" ] (List.indexedMap viewListItem feed)
 
 
-listViewItem : Int -> Item -> Html Msg
-listViewItem index item =
+viewListItem : Int -> Item -> Html Msg
+viewListItem index item =
     li []
         [ aside [] [ text (toString (index + 1)) ]
         , div []
@@ -174,8 +186,8 @@ itemUrl id url title =
 -- ITEM VIEW
 
 
-itemView : Item -> Html Msg
-itemView item =
+viewItem : Item -> Html Msg
+viewItem item =
     article []
         [ section []
             [ h2 [] [ text item.title ]
@@ -184,7 +196,7 @@ itemView item =
             ]
         , Markdown.toHtml [] item.content
         , section [ class "comments-view" ]
-            [ commentsView (getComments item.comments)
+            [ viewComments (getComments item.comments)
             ]
         ]
 
@@ -206,8 +218,8 @@ itemFooter item =
 -- COMMENTS VIEW
 
 
-commentsView : List Item -> Html Msg
-commentsView comments =
+viewComments : List Item -> Html Msg
+viewComments comments =
     ul [] (List.map commentView comments)
 
 
@@ -219,7 +231,7 @@ commentView item =
             , text (" " ++ item.timeAgo)
             ]
         , Markdown.toHtml [] item.content
-        , commentsView (getComments item.comments)
+        , viewComments (getComments item.comments)
         ]
 
 
@@ -227,8 +239,8 @@ commentView item =
 -- USER VIEW
 
 
-userView : User -> Html Msg
-userView user =
+viewUser : User -> Html Msg
+viewUser user =
     section [ class "user-view" ]
         [ table []
             [ row "user:" user.id
@@ -245,29 +257,6 @@ row x y =
         [ td [] [ text x ]
         , td [] [ text y ]
         ]
-
-
-
--- VIEW HELPERS
-
-
-handleViewState : (a -> Html Msg) -> Session.Status a -> Html Msg
-handleViewState successView status =
-    case status of
-        Session.NotAsked ->
-            loadingView
-
-        Session.Loading ->
-            loadingView
-
-        Session.Failure e ->
-            errorView e
-
-        Session.Partial x ->
-            div [] [ loadingView, successView x ]
-
-        Session.Success x ->
-            successView x
 
 
 loadingView : Html Msg
@@ -314,14 +303,17 @@ onClickPreventDefault url =
         { preventDefault = True
         , stopPropagation = False
         }
-        (D.succeed <| NewUrl url)
+        (D.succeed (NewUrl url))
 
 
 getComments : Comments -> List Item
-getComments x =
-    case x of
-        Comments xs ->
-            xs
+getComments comments =
+    case comments of
+        Comments items ->
+            items
+
+        Empty ->
+            []
 
 
 
@@ -330,29 +322,48 @@ getComments x =
 
 check : Model -> ( Model, Cmd Msg )
 check ({ route, page, session } as model) =
-    let
-        goto page =
-            ( { model | page = page }, Cmd.none )
-    in
+    case checkHelper route session of
+        Go result ->
+            case result of
+                Ok x ->
+                    ( { model | page = x }, Cmd.none )
+
+                Err err ->
+                    ( { model | page = ErrorPage err }, Cmd.none )
+
+        Get cmd ->
+            ( { model | page = LoadingPage }, cmd )
+
+
+checkHelper : Route -> Session -> PageHelper Page (Result Http.Error Page) (Cmd Msg)
+checkHelper route session =
     case route of
         Route.Feeds _ ->
-            Session.getFeed session route
-                |> Maybe.map FeedPage
-                |> Maybe.withDefault LoadingPage
-                |> goto
+            case Dict.get (Route.toApi route) session.feeds of
+                Just feed ->
+                    Go (Result.map FeedPage feed)
 
-        _ ->
-            goto ErrorPage
+                Nothing ->
+                    Get (requestFeed route)
 
-
-routeToRequest : Model -> ( Model, Cmd Msg )
-routeToRequest ({ route } as model) =
-    case route of
         Route.Item id ->
-            ( model, requestItem id )
+            case Dict.get id session.items of
+                Just item ->
+                    Go (Result.map ItemPage item)
 
-        _ ->
-            ( model, requestFeed route )
+                Nothing ->
+                    Get (requestItem id)
+
+        Route.User id ->
+            case Dict.get id session.users of
+                Just item ->
+                    Go (Result.map UserPage item)
+
+                Nothing ->
+                    Get (requestUser id)
+
+        Route.NotFound ->
+            Go (Ok MissingPage)
 
 
 
@@ -367,20 +378,19 @@ endpoint =
 requestItem : Int -> Cmd Msg
 requestItem id =
     Http.get (endpoint ++ "item/" ++ toString id ++ ".json") decodeItem
-        |> Http.send (Session.toSessionStatus >> GotItem id)
+        |> Http.send (GotItem id)
 
 
-
--- requestUser : String -> Cmd Msg
--- requestUser x =
---     Http.get (endpoint ++ "user/" ++ x ++ ".json") decodeUser
---         |> Http.send (toSession.Status >> GotUser)
+requestUser : String -> Cmd Msg
+requestUser id =
+    Http.get (endpoint ++ "user/" ++ id ++ ".json") decodeUser
+        |> Http.send (GotUser id)
 
 
 requestFeed : Route -> Cmd Msg
 requestFeed route =
     Http.get (endpoint ++ Route.toApi route ++ ".json") decodeFeed
-        |> Http.send (Session.toSessionStatus >> GotFeed (Route.toApi route))
+        |> Http.send (GotFeed (Route.toApi route))
 
 
 
@@ -403,7 +413,7 @@ decodeItem =
         |> P.optional "url" D.string ""
         |> P.optional "domain" D.string ""
         |> P.required "comments_count" D.int
-        |> P.optional "comments" decodeComments (Comments [])
+        |> P.optional "comments" (D.lazy (\_ -> decodeComments)) Empty
         |> P.optional "content" D.string ""
         |> P.required "type" D.string
 

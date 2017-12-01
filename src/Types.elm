@@ -1,6 +1,11 @@
 module Types exposing (..)
 
 
+type PageHelper page result cmd
+    = Go result
+    | Get cmd
+
+
 type alias Item =
     { id : Int
     , title : String
@@ -26,3 +31,4 @@ type alias User =
 
 type Comments
     = Comments (List Item)
+    | Empty

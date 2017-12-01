@@ -88,6 +88,6 @@ toFeedData feed =
             RouteData "Jobs" "/jobs" "jobs"
 
 
-parseLocation : Location -> Route
-parseLocation =
+parse : Location -> Route
+parse =
     Url.parsePath route >> Maybe.withDefault NotFound
