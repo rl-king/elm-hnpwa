@@ -6,5 +6,5 @@ var Elm = require('Main');
 var app = Elm.Main.fullscreen();
 
 window.addEventListener("load", function() {
-    document.querySelector(".notification").remove()
+    document.querySelector(".notification").remove();
 })

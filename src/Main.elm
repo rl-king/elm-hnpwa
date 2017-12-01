@@ -1,5 +1,6 @@
 module Main exposing (..)
 
+import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onWithOptions)
@@ -9,10 +10,12 @@ import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import Markdown exposing (toHtml)
 import Navigation exposing (Location)
 import Result exposing (..)
-import Route exposing (..)
+import Route exposing (Route)
+import Session exposing (Session)
 import Svg
 import Svg.Attributes as SA
 import Task
+import Types exposing (..)
 
 
 main : Program Never Model Msg
@@ -27,11 +30,17 @@ main =
 
 type alias Model =
     { route : Route
-    , feed : RemoteData (List Item)
-    , item : RemoteData Item
-    , user : RemoteData User
-    , routesPreFetched : Bool
+    , session : Session
+    , page : Page
     }
+
+
+type Page
+    = FeedPage (Session.Status (List Item))
+    | ItemPage
+    | UserPage
+    | LoadingPage
+    | ErrorPage
 
 
 
@@ -40,12 +49,10 @@ type alias Model =
 
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
-    toRequest
-        { route = parseLocation location
-        , feed = NotAsked
-        , item = NotAsked
-        , user = NotAsked
-        , routesPreFetched = False
+    routeToRequest
+        { route = Route.parseLocation location
+        , page = LoadingPage
+        , session = Session Dict.empty Dict.empty
         }
 
 
@@ -56,39 +63,28 @@ init location =
 type Msg
     = NewUrl String
     | UrlChange Location
-    | GotFeed (RemoteData (List Item))
-    | GotItem (RemoteData Item)
-    | GotUser (RemoteData User)
-    | PreFetched
+    | GotFeed String (Session.Status (List Item))
+    | GotItem Int (Session.Status Item)
+
+
+
+-- | GotUser (Session.Status User)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NewUrl url ->
-            model ! [ Navigation.newUrl url ]
+            ( model, Navigation.newUrl url )
 
         UrlChange location ->
-            toRequest { model | route = parseLocation location }
+            routeToRequest { model | route = Route.parseLocation location }
 
-        GotFeed x ->
-            let
-                cmd =
-                    if model.routesPreFetched then
-                        Cmd.none
-                    else
-                        requestOterRoutes model.route
-            in
-            { model | feed = x } ! [ cmd ]
+        GotItem id item ->
+            ( { model | session = Session.insertItem model.session id item }, Cmd.none )
 
-        GotItem x ->
-            { model | item = x } ! []
-
-        GotUser x ->
-            { model | user = x } ! []
-
-        PreFetched ->
-            { model | routesPreFetched = True } ! []
+        GotFeed id feed ->
+            check { model | session = Session.insertFeed model.session id feed }
 
 
 
@@ -96,25 +92,24 @@ update msg model =
 
 
 view : Model -> Html Msg
-view { route, feed, item, user } =
+view { page, route } =
     let
-        routeView =
-            case route of
-                NotFound ->
-                    notFoundView
-
-                ItemRoute _ ->
-                    handleViewState itemView item
-
-                User _ ->
-                    handleViewState userView user
+        pageView =
+            case page of
+                -- NotFound ->
+                --     notFoundView
+                -- Route.Item _ ->
+                --     handleViewState itemView item
+                -- User _ ->
+                FeedPage items ->
+                    handleViewState listView items
 
                 _ ->
-                    handleViewState listView feed
+                    text "bla"
     in
     main_ []
         [ headerView route
-        , routeView
+        , pageView
         ]
 
 
@@ -126,7 +121,15 @@ headerView : Route -> Html Msg
 headerView route =
     header []
         [ logo
-        , nav [] (List.map (headerLink route) [ Top, New, Ask, Show, Jobs ])
+        , nav []
+            (List.map (headerLink route)
+                [ Route.Feeds Route.Top
+                , Route.Feeds Route.New
+                , Route.Feeds Route.Ask
+                , Route.Feeds Route.Show
+                , Route.Feeds Route.Jobs
+                ]
+            )
         ]
 
 
@@ -162,7 +165,7 @@ listViewItem index item =
 itemUrl : Int -> String -> String -> Html Msg
 itemUrl id url title =
     if String.contains "item?id=" url then
-        link (Route.ItemRoute id) [ text title ]
+        link (Route.Item id) [ text title ]
     else
         a [ href url, target "_blank" ] [ text title ]
 
@@ -195,7 +198,7 @@ itemFooter item =
             [ text (toString item.points ++ " points by ")
             , link (Route.User item.user) [ text item.user ]
             , text (" " ++ item.timeAgo ++ " | ")
-            , link (Route.ItemRoute item.id) [ text (toString item.commentsCount ++ " comments") ]
+            , link (Route.Item item.id) [ text (toString item.commentsCount ++ " comments") ]
             ]
 
 
@@ -248,22 +251,22 @@ row x y =
 -- VIEW HELPERS
 
 
-handleViewState : (a -> Html Msg) -> RemoteData a -> Html Msg
-handleViewState successView remoteData =
-    case remoteData of
-        NotAsked ->
+handleViewState : (a -> Html Msg) -> Session.Status a -> Html Msg
+handleViewState successView status =
+    case status of
+        Session.NotAsked ->
             loadingView
 
-        Loading ->
+        Session.Loading ->
             loadingView
 
-        Failure e ->
+        Session.Failure e ->
             errorView e
 
-        Updating x ->
+        Session.Partial x ->
             div [] [ loadingView, successView x ]
 
-        Success x ->
+        Session.Success x ->
             successView x
 
 
@@ -325,37 +328,31 @@ getComments x =
 -- ROUTE TO REQUEST
 
 
-toRequest : Model -> ( Model, Cmd Msg )
-toRequest model =
-    case model.route of
-        NotFound ->
-            model ! []
-
-        User x ->
-            { model | user = Loading } ! [ requestUser x ]
-
-        ItemRoute x ->
-            case model.feed of
-                Success xs ->
-                    { model | item = itemFromFeed x xs } ! [ requestItem x ]
-
-                _ ->
-                    { model | item = Loading } ! [ requestItem x ]
+check : Model -> ( Model, Cmd Msg )
+check ({ route, page, session } as model) =
+    let
+        goto page =
+            ( { model | page = page }, Cmd.none )
+    in
+    case route of
+        Route.Feeds _ ->
+            Session.getFeed session route
+                |> Maybe.map FeedPage
+                |> Maybe.withDefault LoadingPage
+                |> goto
 
         _ ->
-            { model | feed = Loading } ! [ requestFeed model.route ]
+            goto ErrorPage
 
 
-itemFromFeed : Int -> List Item -> RemoteData Item
-itemFromFeed id feed =
-    let
-        matchId x item acc =
-            if item.id == x then
-                Updating item
-            else
-                acc
-    in
-    List.foldl (matchId id) NotAsked feed
+routeToRequest : Model -> ( Model, Cmd Msg )
+routeToRequest ({ route } as model) =
+    case route of
+        Route.Item id ->
+            ( model, requestItem id )
+
+        _ ->
+            ( model, requestFeed route )
 
 
 
@@ -368,47 +365,22 @@ endpoint =
 
 
 requestItem : Int -> Cmd Msg
-requestItem x =
-    Http.get (endpoint ++ "item/" ++ toString x ++ ".json") decodeItem
-        |> Http.send (toRemoteData >> GotItem)
+requestItem id =
+    Http.get (endpoint ++ "item/" ++ toString id ++ ".json") decodeItem
+        |> Http.send (Session.toSessionStatus >> GotItem id)
 
 
-requestUser : String -> Cmd Msg
-requestUser x =
-    Http.get (endpoint ++ "user/" ++ x ++ ".json") decodeUser
-        |> Http.send (toRemoteData >> GotUser)
+
+-- requestUser : String -> Cmd Msg
+-- requestUser x =
+--     Http.get (endpoint ++ "user/" ++ x ++ ".json") decodeUser
+--         |> Http.send (toSession.Status >> GotUser)
 
 
 requestFeed : Route -> Cmd Msg
 requestFeed route =
     Http.get (endpoint ++ Route.toApi route ++ ".json") decodeFeed
-        |> Http.send (toRemoteData >> GotFeed)
-
-
-requestOterRoutes : Route -> Cmd Msg
-requestOterRoutes route =
-    let
-        routeToTask x =
-            Http.get (endpoint ++ Route.toApi x ++ ".json") decodeFeed
-                |> Http.toTask
-
-        routesToRequest =
-            [ Top, New, Ask, Show, Jobs ]
-                |> List.filter ((/=) route)
-                |> List.map routeToTask
-                |> Task.sequence
-    in
-    Task.attempt (\_ -> PreFetched) routesToRequest
-
-
-toRemoteData : Result Http.Error a -> RemoteData a
-toRemoteData result =
-    case result of
-        Err e ->
-            Failure e
-
-        Ok x ->
-            Success x
+        |> Http.send (Session.toSessionStatus >> GotFeed (Route.toApi route))
 
 
 
@@ -448,45 +420,6 @@ decodeUser =
 decodeComments : Decoder Comments
 decodeComments =
     D.map Comments (D.list (D.lazy (\_ -> decodeItem)))
-
-
-
--- TYPES
-
-
-type RemoteData a
-    = NotAsked
-    | Loading
-    | Failure Http.Error
-    | Updating a
-    | Success a
-
-
-type alias Item =
-    { id : Int
-    , title : String
-    , points : Int
-    , user : String
-    , timeAgo : String
-    , url : String
-    , domain : String
-    , commentsCount : Int
-    , comments : Comments
-    , content : String
-    , type_ : String
-    }
-
-
-type alias User =
-    { about : String
-    , created : String
-    , id : String
-    , karma : Int
-    }
-
-
-type Comments
-    = Comments (List Item)
 
 
 
