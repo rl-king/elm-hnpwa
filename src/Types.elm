@@ -1,7 +1,7 @@
 module Types exposing (..)
 
 
-type PageHelper page result cmd
+type PageHelper result cmd
     = Go result
     | Get cmd
 

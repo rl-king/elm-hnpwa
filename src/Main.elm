@@ -359,32 +359,20 @@ check ({ route, page, session } as model) =
             ( { model | page = LoadingPage }, cmd )
 
 
-checkHelper : Route -> Session -> PageHelper Page (Result Http.Error Page) (Cmd Msg)
+checkHelper : Route -> Session -> PageHelper (Result Http.Error Page) (Cmd Msg)
 checkHelper route session =
     case route of
         Route.Feeds _ ->
-            case Dict.get (Route.toApi route) session.feeds of
-                Just feed ->
-                    Go (Result.map FeedPage feed)
-
-                Nothing ->
-                    Get (requestFeed route)
+            Maybe.map (Go << Result.map FeedPage) (Dict.get (Route.toApi route) session.feeds)
+                |> Maybe.withDefault (Get (requestFeed route))
 
         Route.Item id ->
-            case Dict.get id session.items of
-                Just item ->
-                    Go (Result.map ItemPage item)
-
-                Nothing ->
-                    Get (requestItem id)
+            Maybe.map (Go << Result.map ItemPage) (Dict.get id session.items)
+                |> Maybe.withDefault (Get (requestItem id))
 
         Route.User id ->
-            case Dict.get id session.users of
-                Just item ->
-                    Go (Result.map UserPage item)
-
-                Nothing ->
-                    Get (requestUser id)
+            Maybe.map (Go << Result.map UserPage) (Dict.get id session.users)
+                |> Maybe.withDefault (Get (requestUser id))
 
         Route.NotFound ->
             Go (Ok NotFound)
