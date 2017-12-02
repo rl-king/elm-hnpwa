@@ -1,17 +1,12 @@
-$w1 : #F9F9F9;
-$w2 : rgb(231, 231, 231);
-$w3 : #CCC;
-$g1 : #666;
-$g2 : #444;
-$b1 : #111;
-$b2 : #333;
-$blue:		#3CA5EA;
-$green:		#27C37F;
-$red:		#FD3740;
-$yellow:	yellow;
-$purple:	#7F63D2;
-$pink:	    #f9b2e1;
-$orange:    #FF8A30;
+$w1:    #F9F9F9;
+$w2:    #e7e7e7;
+$w3:    #CCC;
+$g1:    #666;
+$g2:    #444;
+$b1:    #111;
+$b2:    #333;
+$green: #27C37F;
+
 
 html {
     font-size: 87.5%;
@@ -65,9 +60,12 @@ header {
     align-items: center;
     height: 3.5rem;
     font-weight: 600;
-    font-size: 1.1rem;
     position: relative;
     background-color: $w1;
+
+    @media (min-width: 768px) {
+        font-size: 1.1rem;
+    }
 
     .logo {
         position: absolute;
@@ -81,27 +79,31 @@ header {
     }
 
     nav {
-        margin-left: 5.5rem;
+        margin-left: 4.5rem;
 
         a, span {
-            margin-right: 1.5rem;
+            margin-right: .5rem;
             padding-bottom: 0.25rem;
-            color: $b1;
-            -webkit-font-smoothing: antialiased;
 
             &:hover {
                 text-decoration: none;
-                color: $b1;
                 border-bottom: 3px solid $w3;
+            }
+
+            @media (min-width: 768px) {
+                margin-right: 1.5rem;
             }
         }
 
         span {
             border-bottom: 3px solid $w3;
         }
+
+        @media (min-width: 768px) {
+            margin-left: 5.5rem;
+        }
     }
 }
-
 
 #content {
     max-width: 768px;
@@ -110,13 +112,13 @@ header {
 
 .list-view {
     li {
-        padding: .5rem 1.5rem;
+        padding: .5rem 1rem;
         display: flex;
         margin-bottom: 4px;
-    }
 
-    a {
-        font-weight: 500;
+        @media (min-width: 768px) {
+            padding: .5rem 1.5rem;
+        }
     }
 
     .domain {
@@ -128,15 +130,11 @@ header {
         margin-top: .25rem;
         font-size: .875rem;
         color: $g1;
-
-        a {
-            color: $b1;
-        }
     }
 }
 
 .pagination {
-    margin: 2rem 1.5rem;
+    margin: 1.5rem 1.5rem 3rem;
     display: flex;
     justify-content: center;
 
@@ -154,6 +152,15 @@ header {
         padding: .5rem .75rem;
         font-weight: 500;
     }
+
+    nav {
+        display: none;
+
+        @media (min-width: 768px) {
+            display: block;
+        }
+    }
+
 }
 
 .domain {
@@ -171,16 +178,24 @@ aside {
 }
 
 article {
-    padding: 1.5rem;
+    padding: 1rem;
 
     footer {
         margin-top: 0.5rem;
     }
 
+    @media (min-width: 768px) {
+        padding: 1.5rem;
+    }
+
     ul {
         margin-top: 1rem;
-        padding-left: 1.5rem;
+        padding-left: 1rem;
         border-left: 1px solid $w2;
+
+        @media (min-width: 768px) {
+            padding-left: 1.5rem;
+        }
     }
 }
 
@@ -190,6 +205,10 @@ article {
 
     ul:first-child {
         border: 0;
+    }
+
+    a {
+        word-break: break-all;
     }
 }
 
@@ -207,6 +226,16 @@ article {
     top: 40%;
     left: 50%;
     transform: translateX(-50%);
+}
+
+.githublink {
+    margin-left: 0.5rem;
+    -webkit-font-smoothing: antialiased;
+
+    @media (min-width: 768px) {
+        position: absolute;
+        right: 2rem;
+    }
 }
 
 .spinner {

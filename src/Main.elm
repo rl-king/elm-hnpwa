@@ -133,7 +133,7 @@ view { page, route } =
 viewHeader : Route -> Html Msg
 viewHeader route =
     header []
-        [ link (Route.Feeds Route.Top (Just 1)) [ i [ class "logo" ] [ logo ] ]
+        [ link Route.Root [ i [ attribute "aria-label" "Homepage", class "logo" ] [ logo ] ]
         , nav []
             (List.map (headerLink route)
                 [ Route.Feeds Route.Top Nothing
@@ -143,13 +143,14 @@ viewHeader route =
                 , Route.Feeds Route.Jobs Nothing
                 ]
             )
+        , a [ class "githublink", href "https://github.com/rl-king/elm-hnpwa" ] [ text "About" ]
         ]
 
 
 headerLink : Route -> Route -> Html Msg
 headerLink currentRoute route =
     if Route.toTitle currentRoute == Route.toTitle route then
-        span [] [ text (Route.toTitle route) ]
+        span [ attribute "aria-current" "page" ] [ text (Route.toTitle route) ]
     else
         link route [ text (Route.toTitle route) ]
 
@@ -215,7 +216,7 @@ previousPageLink route =
 paginationLink : Route -> Int -> Html Msg
 paginationLink route page =
     if page == Route.toFeedPage route then
-        span [] [ text (toString page) ]
+        span [ attribute "aria-current" "page" ] [ text (toString page) ]
     else
         link (Route.mapFeedPage (\_ -> page) route) [ text (toString page) ]
 
@@ -411,7 +412,7 @@ checkHelper route session =
             Maybe.map (Go << Result.map Profile) (Dict.get id session.users)
                 |> Maybe.withDefault (Get (requestUser id))
 
-        Route.NotFound ->
+        _ ->
             Go (Ok NotFound)
 
 

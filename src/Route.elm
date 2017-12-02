@@ -5,7 +5,8 @@ import UrlParser as Url exposing (..)
 
 
 type Route
-    = Feeds Feed (Maybe Int)
+    = Root
+    | Feeds Feed (Maybe Int)
     | Item Int
     | User String
     | NotFound
@@ -36,6 +37,7 @@ route : Url.Parser (Route -> a) a
 route =
     Url.oneOf
         [ Url.map (Feeds Top) (top <?> intParam "page")
+        , Url.map (Feeds Top) (s "top" <?> intParam "page")
         , Url.map (Feeds New) (s "new" <?> intParam "page")
         , Url.map (Feeds Ask) (s "ask" <?> intParam "page")
         , Url.map (Feeds Show) (s "show" <?> intParam "page")
@@ -122,6 +124,9 @@ toPrevious route =
 toRouteData : Route -> RouteData
 toRouteData route =
     case route of
+        Root ->
+            RouteData "Top" "/" "news.json" Nothing
+
         Feeds feed param ->
             Maybe.withDefault (toFeedData feed 1) (Maybe.map (toFeedData feed) param)
 
@@ -139,7 +144,7 @@ toFeedData : Feed -> Int -> RouteData
 toFeedData feed page =
     case feed of
         Top ->
-            RouteData "Top" ("/?page=" ++ toString page) ("news.json?page=" ++ toString page) (Just 10)
+            RouteData "Top" ("/top?page=" ++ toString page) ("news.json?page=" ++ toString page) (Just 10)
 
         New ->
             RouteData "New" ("/new?page=" ++ toString page) ("newest.json?page=" ++ toString page) (Just 12)
