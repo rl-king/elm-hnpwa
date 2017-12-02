@@ -1,10 +1,17 @@
 $w1 : #F9F9F9;
-$w2 : #EEE;
+$w2 : rgb(231, 231, 231);
 $w3 : #CCC;
 $g1 : #666;
 $g2 : #444;
 $b1 : #111;
-$b2 : #222;
+$b2 : #333;
+$blue:		#3CA5EA;
+$green:		#27C37F;
+$red:		#FD3740;
+$yellow:	yellow;
+$purple:	#7F63D2;
+$pink:	    #f9b2e1;
+$orange:    #FF8A30;
 
 html {
     font-size: 87.5%;
@@ -25,6 +32,7 @@ p {
 a {
     text-decoration: none;
     color: $b1;
+    font-weight: 500;
 
     &:hover {
         text-decoration: underline;
@@ -53,38 +61,79 @@ ul {
 }
 
 header {
-    background-color: $w1;
-    border-bottom: 1px solid $w2;
-    padding: 0 1.5rem;
     display: flex;
-    height: 3.5rem;
     align-items: center;
-    font-weight: 500;
-    margin-bottom: 0.15rem;
-}
+    height: 3.5rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    position: relative;
+    background-color: $w1;
 
-header span {
-    border-bottom: 3px solid $w3;
-}
-
-nav {
-    margin-left: 1rem;
-
-    a,
-    span {
-        margin-right: 1rem;
+    .logo {
+        position: absolute;
+        top: 0;
+        height: 3.5rem;
+        width: 3.5rem;
+        background-color: $green;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
+
+    nav {
+        margin-left: 5.5rem;
+
+        a, span {
+            margin-right: 1.5rem;
+            padding-bottom: 0.25rem;
+            color: $b1;
+            -webkit-font-smoothing: antialiased;
+
+            &:hover {
+                text-decoration: none;
+                color: $b1;
+                border-bottom: 3px solid $w3;
+            }
+        }
+
+        span {
+            border-bottom: 3px solid $w3;
+        }
+    }
+}
+
+
+#content {
+    max-width: 768px;
+    margin: 1rem auto;
 }
 
 .list-view {
     li {
         padding: .5rem 1.5rem;
         display: flex;
-        border-bottom: 1px solid $w2;
+        margin-bottom: 4px;
+    }
+
+    a {
+        font-weight: 500;
     }
 
     .domain {
         margin-left: .5rem;
+        color: $g1;
+    }
+
+    footer {
+        margin-top: .25rem;
+        font-size: .875rem;
+        color: $g1;
+
+        a {
+            color: $b1;
+            // font-weight: 400;
+            // text-decoration: underline;
+        }
     }
 }
 
@@ -113,32 +162,17 @@ nav {
     font-size: .75rem;
 }
 
-li footer {
-    margin-top: .25rem;
-    font-size: .875rem;
-    color: $g1;
-
-    a {
-        color: $g1;
-        text-decoration: underline;
-    }
-}
-
 aside {
     display: flex;
     align-items: center;
     margin-right: 1rem;
     min-width: 1rem;
     font-weight: 500;
-    color: $g1;
+    color: $b1;
 }
 
 article {
-    padding: 1rem 1.5rem;
-
-    & ul:nth-child(2n) {
-        padding: 0;
-    }
+    padding: 1.5rem;
 
     footer {
         margin-top: 0.5rem;
@@ -147,28 +181,27 @@ article {
     ul {
         margin-top: 1rem;
         padding-left: 1.5rem;
-        border-left: 1px solid $w3;
+        border-left: 1px solid $w2;
     }
 
     section {
-        border-bottom: 1px solid $w1;
-        padding-bottom: 1rem;
+
     }
 }
 
 
 .comments-view {
     margin-left: -1.5rem;
+    border: 0;
+
+    ul:first-child {
+        border: 0;
+    }
 }
 
 .comment-meta {
-    margin-top: .25rem;
-    font-size: .875rem;
-    color: $g2;
-
-    a {
-        color: $g2;
-    }
+    padding: .5rem 0;
+    border-bottom: 1px solid $w2;
 }
 
 .user-view {
@@ -178,7 +211,8 @@ article {
 .notification {
     position: fixed;
     top: 40%;
-    left: calc(50% - 36px)
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .spinner {
@@ -195,4 +229,3 @@ article {
 @keyframes spin {
     to {transform: rotate(360deg);}
 }
-
