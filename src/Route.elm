@@ -60,8 +60,8 @@ toApi =
     toRouteData >> .api
 
 
-toPage : Route -> String
-toPage route =
+toFeedPage : Route -> String
+toFeedPage route =
     case route of
         Feeds _ (Just page) ->
             page
@@ -75,11 +75,11 @@ toPagination =
     toRouteData >> .pagination
 
 
-changePage : Route -> String -> Route
-changePage route page =
+mapFeeds : (String -> String) -> Route -> Route
+mapFeeds fn route =
     case route of
-        Feeds feed _ ->
-            Feeds feed (Just page)
+        Feeds feed page ->
+            Feeds feed (Maybe.map fn page)
 
         _ ->
             route

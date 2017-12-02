@@ -148,7 +148,7 @@ viewHeader route =
 
 headerLink : Route -> Route -> Html Msg
 headerLink currentRoute route =
-    if currentRoute == route then
+    if Route.toTitle currentRoute == Route.toTitle route then
         span [] [ text (Route.toTitle route) ]
     else
         link route [ text (Route.toTitle route) ]
@@ -199,10 +199,10 @@ viewPagination route =
 
 paginationLink : Route -> Int -> Html Msg
 paginationLink route page =
-    if toString page == Route.toPage route then
+    if toString page == Route.toFeedPage route then
         span [] [ text (toString page) ]
     else
-        link (Route.changePage route (toString page)) [ text (toString page) ]
+        link (Route.mapFeeds (\_ -> toString page) route) [ text (toString page) ]
 
 
 
