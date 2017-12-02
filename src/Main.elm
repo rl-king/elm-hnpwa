@@ -160,8 +160,8 @@ headerLink currentRoute route =
 
 viewList : Route -> List Item -> Html Msg
 viewList route feed =
-    section []
-        [ ul [ class "list-view" ] (List.indexedMap viewListItem feed)
+    section [ class "list-view" ]
+        [ ul [] (List.indexedMap viewListItem feed)
         , viewPagination route
         ]
 
@@ -190,19 +190,35 @@ viewPagination : Route -> Html Msg
 viewPagination route =
     case Route.toPagination route of
         Just total ->
-            nav [ class "pagination" ]
-                (List.map (paginationLink route) (List.range 1 total))
+            section [ class "pagination" ]
+                [ previousPageLink route
+                , nav []
+                    (List.map (paginationLink route) (List.range 1 total))
+                , nextPageLink route
+                ]
 
         Nothing ->
             text ""
 
 
+nextPageLink : Route -> Html Msg
+nextPageLink route =
+    Maybe.map (flip link [ text "Next" ]) (Route.toNext route)
+        |> Maybe.withDefault (text "")
+
+
+previousPageLink : Route -> Html Msg
+previousPageLink route =
+    Maybe.map (flip link [ text "Previous" ]) (Route.toPrevious route)
+        |> Maybe.withDefault (text "")
+
+
 paginationLink : Route -> Int -> Html Msg
 paginationLink route page =
-    if toString page == Route.toFeedPage route then
+    if page == Route.toFeedPage route then
         span [] [ text (toString page) ]
     else
-        link (Route.mapFeeds (\_ -> toString page) route) [ text (toString page) ]
+        link (Route.mapFeedPage (\_ -> page) route) [ text (toString page) ]
 
 
 

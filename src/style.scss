@@ -90,6 +90,8 @@ nav {
 
 .pagination {
     margin: 1rem 1.5rem 2rem;
+    display: flex;
+    justify-content: center;
 
     a {
         text-align: center;
