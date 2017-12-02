@@ -27,6 +27,11 @@ type alias RouteData =
     }
 
 
+parse : Location -> Route
+parse =
+    Url.parsePath route >> Maybe.withDefault NotFound
+
+
 route : Url.Parser (Route -> a) a
 route =
     Url.oneOf
@@ -60,6 +65,11 @@ toApi =
     toRouteData >> .api
 
 
+toPagination : Route -> Maybe Int
+toPagination =
+    toRouteData >> .pagination
+
+
 toFeedPage : Route -> Int
 toFeedPage route =
     case route of
@@ -68,11 +78,6 @@ toFeedPage route =
 
         _ ->
             0
-
-
-toPagination : Route -> Maybe Int
-toPagination =
-    toRouteData >> .pagination
 
 
 mapFeedPage : (Int -> Int) -> Route -> Route
@@ -90,7 +95,7 @@ toNext route =
     case ( toPagination route, route ) of
         ( Just max, Feeds feed (Just page) ) ->
             if page < max then
-                Just (Feeds feed (Just (page + 1)))
+                Just (mapFeedPage ((+) 1) route)
             else
                 Nothing
 
@@ -106,7 +111,7 @@ toPrevious route =
     case route of
         Feeds feed (Just page) ->
             if page > 1 then
-                Just (Feeds feed (Just (page - 1)))
+                Just (mapFeedPage ((-) 1) route)
             else
                 Nothing
 
@@ -121,10 +126,10 @@ toRouteData route =
             Maybe.withDefault (toFeedData feed 1) (Maybe.map (toFeedData feed) param)
 
         Item x ->
-            RouteData "Item" ("/item/" ++ toString x) "item" Nothing
+            RouteData "Item" ("/item/" ++ toString x ++ ".json") "item" Nothing
 
         User x ->
-            RouteData "User" ("/user/" ++ x) "user" Nothing
+            RouteData "User" ("/user/" ++ x ++ ".json") "user" Nothing
 
         NotFound ->
             RouteData "404" "/404" "404" Nothing
@@ -147,8 +152,3 @@ toFeedData feed page =
 
         Jobs ->
             RouteData "Jobs" ("/jobs?page=" ++ toString page) ("jobs.json?page=" ++ toString page) Nothing
-
-
-parse : Location -> Route
-parse =
-    Url.parsePath route >> Maybe.withDefault NotFound

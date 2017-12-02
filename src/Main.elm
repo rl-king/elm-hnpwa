@@ -5,7 +5,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (defaultOptions, onClick, onWithOptions)
 import Html.Lazy as Lazy
-import Http exposing (Error(..), get, send)
+import Http exposing (get, send)
 import Json.Decode as D exposing (..)
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
 import Markdown exposing (toHtml)
@@ -34,11 +34,11 @@ type alias Model =
 
 
 type Page
-    = FeedPage (List Item)
-    | ItemPage Item
-    | UserPage User
-    | LoadingPage
-    | ErrorPage Http.Error
+    = Feed (List Item)
+    | Article Item
+    | Profile User
+    | Loading
+    | Error Http.Error
     | NotFound
 
 
@@ -57,7 +57,7 @@ init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
     check
         { route = Route.parse location
-        , page = LoadingPage
+        , page = Loading
         , session = Session Dict.empty Dict.empty Dict.empty
         }
 
@@ -102,19 +102,19 @@ view { page, route } =
     let
         viewPage =
             case page of
-                FeedPage items ->
+                Feed items ->
                     Lazy.lazy2 viewList route items
 
-                ItemPage item ->
+                Article item ->
                     viewItem item
 
-                UserPage user ->
+                Profile user ->
                     viewUser user
 
-                LoadingPage ->
+                Loading ->
                     viewLoading
 
-                ErrorPage error ->
+                Error error ->
                     viewError error
 
                 NotFound ->
@@ -133,7 +133,7 @@ view { page, route } =
 viewHeader : Route -> Html Msg
 viewHeader route =
     header []
-        [ link (Route.Feeds Route.Top Nothing) [ logo ]
+        [ link (Route.Feeds Route.Top (Just 1)) [ logo ]
         , nav []
             (List.map (headerLink route)
                 [ Route.Feeds Route.Top Nothing
@@ -192,8 +192,7 @@ viewPagination route =
         Just total ->
             section [ class "pagination" ]
                 [ previousPageLink route
-                , nav []
-                    (List.map (paginationLink route) (List.range 1 total))
+                , nav [] (List.map (paginationLink route) (List.range 1 total))
                 , nextPageLink route
                 ]
 
@@ -313,22 +312,22 @@ viewError error =
     div [ class "notification" ] [ text (htmlErrorToString error) ]
 
 
-htmlErrorToString : Error -> String
+htmlErrorToString : Http.Error -> String
 htmlErrorToString error =
     case error of
-        Timeout ->
+        Http.Timeout ->
             "Timeout"
 
-        NetworkError ->
+        Http.NetworkError ->
             "NetworkError | You seem to be offline"
 
-        BadStatus { status } ->
+        Http.BadStatus { status } ->
             "BadStatus | The server gave me a " ++ toString status.code ++ " error"
 
-        BadPayload _ _ ->
+        Http.BadPayload _ _ ->
             "BadPayload | The server gave me back something I did not expect"
 
-        BadUrl _ ->
+        Http.BadUrl _ ->
             "The Hackernews API seems to have changed"
 
 
@@ -391,25 +390,25 @@ check ({ route, page, session } as model) =
                     ( { model | page = x }, Cmd.none )
 
                 Err err ->
-                    ( { model | page = ErrorPage err }, Cmd.none )
+                    ( { model | page = Error err }, Cmd.none )
 
         Get cmd ->
-            ( { model | page = LoadingPage }, cmd )
+            ( { model | page = Loading }, cmd )
 
 
 checkHelper : Route -> Session -> PageHelper (Result Http.Error Page) (Cmd Msg)
 checkHelper route session =
     case route of
         Route.Feeds _ _ ->
-            Maybe.map (Go << Result.map FeedPage) (Dict.get (Route.toApi route) session.feeds)
+            Maybe.map (Go << Result.map Feed) (Dict.get (Route.toApi route) session.feeds)
                 |> Maybe.withDefault (Get (requestFeed route))
 
         Route.Item id ->
-            Maybe.map (Go << Result.map ItemPage) (Dict.get id session.items)
+            Maybe.map (Go << Result.map Article) (Dict.get id session.items)
                 |> Maybe.withDefault (Get (requestItem id))
 
         Route.User id ->
-            Maybe.map (Go << Result.map UserPage) (Dict.get id session.users)
+            Maybe.map (Go << Result.map Profile) (Dict.get id session.users)
                 |> Maybe.withDefault (Get (requestUser id))
 
         Route.NotFound ->
