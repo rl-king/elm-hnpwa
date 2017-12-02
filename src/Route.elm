@@ -94,6 +94,9 @@ toNext route =
             else
                 Nothing
 
+        ( _, Feeds feed Nothing ) ->
+            Just (Feeds feed (Just 2))
+
         _ ->
             Nothing
 

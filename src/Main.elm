@@ -133,7 +133,7 @@ view { page, route } =
 viewHeader : Route -> Html Msg
 viewHeader route =
     header []
-        [ logo
+        [ link (Route.Feeds Route.Top Nothing) [ logo ]
         , nav []
             (List.map (headerLink route)
                 [ Route.Feeds Route.Top Nothing
