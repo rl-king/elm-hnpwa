@@ -90,10 +90,6 @@ update msg ({ session } as model) =
             check { model | session = { session | users = Dict.insert id user session.users } }
 
         GotFeed id feed ->
-            -- let
-            --     items =
-            --         Result.map ()
-            -- in
             check { model | session = { session | feeds = Dict.insert id feed session.feeds } }
 
 
