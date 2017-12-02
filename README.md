@@ -1,7 +1,4 @@
-# Elm Hacker News Progressive Web App | Work in progress
-
-## TODO
-- [ ] Fix Manifest bug
+# Elm Hacker News Progressive Web App
 
 ## Develop:
 ```

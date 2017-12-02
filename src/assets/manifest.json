@@ -1,5 +1,5 @@
 {
-    "name": "Elm Hacker News NPWA",
+    "name": "Elm Hacker News PWA",
     "short_name": "Elm HNPWA",
     "start_url": "/",
     "display": "standalone",

@@ -90,6 +90,10 @@ update msg ({ session } as model) =
             check { model | session = { session | users = Dict.insert id user session.users } }
 
         GotFeed id feed ->
+            -- let
+            --     items =
+            --         Result.map ()
+            -- in
             check { model | session = { session | feeds = Dict.insert id feed session.feeds } }
 
 
@@ -284,14 +288,14 @@ htmlErrorToString error =
         NetworkError ->
             "NetworkError | You seem to be offline"
 
-        BadStatus x ->
-            "BadStatus | The server gave me a " ++ toString x.status.code ++ " error"
+        BadStatus { status } ->
+            "BadStatus | The server gave me a " ++ toString status.code ++ " error"
 
         BadPayload _ _ ->
             "BadPayload | The server gave me back something I did not expect"
 
         BadUrl _ ->
-            "The API seems to have changed"
+            "The Hackernews API seems to have changed"
 
 
 

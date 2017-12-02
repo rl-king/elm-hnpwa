@@ -132,14 +132,14 @@ if (isProd === true) {
             }),
             new CopyWebpackPlugin([{
                 from: 'src/assets/',
-                to: 'dist/assets/'
+                to: './'
             }]),
             new SWPrecacheWebpackPlugin({
                 cacheId: 'elmhnpwa',
                 filename: 'service-worker.js',
-                minify: false,
+                minify: true,
                 navigateFallback: '/index.html',
-                staticFileGlobsIgnorePatterns: [/\.map$/, /asset-manifest\.json$/],
+                staticFileGlobsIgnorePatterns: [/manifest\.json$/],
                 runtimeCaching: [
                     {
                         urlPattern: new RegExp(`${endpoint}/(news|newest|ask|show|jobs).json`),
