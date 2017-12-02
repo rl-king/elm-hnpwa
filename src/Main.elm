@@ -184,7 +184,7 @@ itemUrl id url title =
     if String.contains "item?id=" url then
         link (Route.Item id) [ text title ]
     else
-        a [ href url, target "_blank" ] [ text title ]
+        a [ href url, target "_blank", rel "noopener" ] [ text title ]
 
 
 
