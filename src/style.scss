@@ -88,6 +88,24 @@ nav {
     }
 }
 
+.pagination {
+    margin: 1rem 1.5rem 2rem;
+
+    a {
+        text-align: center;
+        display: inline-block;
+        padding: .5rem;
+    }
+
+    span {
+        text-align: center;
+        display: inline-block;
+        background-color: $w3;
+        border-radius: 2px;
+        padding: .5rem;
+    }
+}
+
 .domain {
     color: $g2;
     font-size: .75rem;

@@ -103,7 +103,7 @@ view { page, route } =
         viewPage =
             case page of
                 FeedPage items ->
-                    Lazy.lazy viewList items
+                    Lazy.lazy2 viewList route items
 
                 ItemPage item ->
                     viewItem item
@@ -136,11 +136,11 @@ viewHeader route =
         [ logo
         , nav []
             (List.map (headerLink route)
-                [ Route.Feeds Route.Top
-                , Route.Feeds Route.New
-                , Route.Feeds Route.Ask
-                , Route.Feeds Route.Show
-                , Route.Feeds Route.Jobs
+                [ Route.Feeds Route.Top Nothing
+                , Route.Feeds Route.New Nothing
+                , Route.Feeds Route.Ask Nothing
+                , Route.Feeds Route.Show Nothing
+                , Route.Feeds Route.Jobs Nothing
                 ]
             )
         ]
@@ -158,9 +158,12 @@ headerLink currentRoute route =
 -- LIST VIEW
 
 
-viewList : List Item -> Html Msg
-viewList feed =
-    ul [ class "list-view" ] (List.indexedMap viewListItem feed)
+viewList : Route -> List Item -> Html Msg
+viewList route feed =
+    section []
+        [ ul [ class "list-view" ] (List.indexedMap viewListItem feed)
+        , viewPagination route
+        ]
 
 
 viewListItem : Int -> Item -> Html Msg
@@ -181,6 +184,25 @@ itemUrl id url title =
         link (Route.Item id) [ text title ]
     else
         a [ href url, target "_blank", rel "noopener" ] [ text title ]
+
+
+viewPagination : Route -> Html Msg
+viewPagination route =
+    case Route.toPagination route of
+        Just total ->
+            nav [ class "pagination" ]
+                (List.map (paginationLink route) (List.range 1 total))
+
+        Nothing ->
+            text ""
+
+
+paginationLink : Route -> Int -> Html Msg
+paginationLink route page =
+    if toString page == Route.toPage route then
+        span [] [ text (toString page) ]
+    else
+        link (Route.changePage route (toString page)) [ text (toString page) ]
 
 
 
@@ -362,7 +384,7 @@ check ({ route, page, session } as model) =
 checkHelper : Route -> Session -> PageHelper (Result Http.Error Page) (Cmd Msg)
 checkHelper route session =
     case route of
-        Route.Feeds _ ->
+        Route.Feeds _ _ ->
             Maybe.map (Go << Result.map FeedPage) (Dict.get (Route.toApi route) session.feeds)
                 |> Maybe.withDefault (Get (requestFeed route))
 
@@ -401,7 +423,7 @@ requestUser id =
 
 requestFeed : Route -> Cmd Msg
 requestFeed route =
-    Http.get (endpoint ++ Route.toApi route ++ ".json") decodeFeed
+    Http.get (endpoint ++ Route.toApi route) decodeFeed
         |> Http.send (GotFeed (Route.toApi route))
 
 
