@@ -131,14 +131,12 @@ header {
 
         a {
             color: $b1;
-            // font-weight: 400;
-            // text-decoration: underline;
         }
     }
 }
 
 .pagination {
-    margin: 1rem 1.5rem 2rem;
+    margin: 2rem 1.5rem;
     display: flex;
     justify-content: center;
 
@@ -151,9 +149,10 @@ header {
     span {
         text-align: center;
         display: inline-block;
-        background-color: $w3;
+        background-color: $w2;
         border-radius: 2px;
-        padding: .5rem;
+        padding: .5rem .75rem;
+        font-weight: 500;
     }
 }
 
@@ -183,12 +182,7 @@ article {
         padding-left: 1.5rem;
         border-left: 1px solid $w2;
     }
-
-    section {
-
-    }
 }
-
 
 .comments-view {
     margin-left: -1.5rem;

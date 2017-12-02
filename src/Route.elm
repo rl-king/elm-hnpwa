@@ -111,7 +111,7 @@ toPrevious route =
     case route of
         Feeds feed (Just page) ->
             if page > 1 then
-                Just (mapFeedPage ((-) 1) route)
+                Just (mapFeedPage (flip (-) 1) route)
             else
                 Nothing
 
