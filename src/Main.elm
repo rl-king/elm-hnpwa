@@ -4,7 +4,6 @@ import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (defaultOptions, onClick, onWithOptions)
-import Html.Lazy as Lazy
 import Http exposing (get, send)
 import Json.Decode as D exposing (..)
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
@@ -121,7 +120,7 @@ view { page, route } =
                     viewNotFound
     in
     main_ []
-        [ Lazy.lazy viewHeader route
+        [ viewHeader route
         , section [ id "content" ] [ viewPage ]
         ]
 
