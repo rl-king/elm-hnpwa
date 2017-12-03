@@ -397,15 +397,13 @@ getComments comments =
 
 
 check : Model -> ( Model, Cmd Msg )
-check ({ route, page, session } as model) =
+check ({ route, session } as model) =
     case checkHelper route session of
-        Go result ->
-            case result of
-                Ok x ->
-                    ( { model | page = x }, Cmd.none )
+        Go (Ok page) ->
+            ( { model | page = page }, Cmd.none )
 
-                Err err ->
-                    ( { model | page = Error err }, Cmd.none )
+        Go (Err err) ->
+            ( { model | page = Error err }, Cmd.none )
 
         Get cmd ->
             ( { model | page = Loading }, cmd )
@@ -472,7 +470,7 @@ decodeItem =
         |> P.required "id" D.int
         |> P.optional "title" D.string "No title"
         |> P.optional "points" D.int 0
-        |> P.optional "user" D.string "No user found"
+        |> P.optional "user" D.string ""
         |> P.required "time_ago" D.string
         |> P.optional "url" D.string ""
         |> P.optional "domain" D.string ""

@@ -1,11 +1,11 @@
-$w1:    #F9F9F9;
+$w1:    #f7f7f7;
 $w2:    #e7e7e7;
 $w3:    #CCC;
 $g1:    #666;
 $g2:    #444;
 $b1:    #111;
 $b2:    #333;
-$green: #27C37F;
+$green: #3cdb91;
 $yellow:#f7dc64;
 
 
@@ -68,17 +68,6 @@ header {
         font-size: 1.1rem;
     }
 
-    .logo {
-        position: absolute;
-        top: 0;
-        height: 3.5rem;
-        width: 3.5rem;
-        background-color: $green;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
     nav {
         margin-left: 4.5rem;
 
@@ -102,6 +91,26 @@ header {
 
         @media (min-width: 768px) {
             margin-left: 5.5rem;
+        }
+    }
+}
+
+.logo {
+    position: absolute;
+    top: 0;
+    height: 3.5rem;
+    width: 3.5rem;
+    background: linear-gradient(45deg, #ee5b2e 0%,#e0e7e4 30%,$green 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+
+    &:hover {
+        svg {
+            animation: fly .75s cubic-bezier(0.165, 0.84, 0.44, 1);
+            animation-fill-mode: forwards;
+            animation-delay: .2s;
         }
     }
 }
@@ -264,4 +273,11 @@ article {
 
 @keyframes spin {
     to {transform: rotate(360deg);}
+}
+
+@keyframes fly {
+    0% {transform: translateX(0);}
+    50% {transform: translateX(3rem);}
+    50.1% {transform: translateX(-3rem);}
+    100% {transform: translateX(0);}
 }
