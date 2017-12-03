@@ -1,7 +1,13 @@
 # Elm Hacker News Progressive Web App
 A [HNPWA](https://hnpwa.com) implementation written in [Elm 0.18](http://elm-lang.org)
 
-Url: [https://elm-hnpwa.firebaseapp.com](https://elm-hnpwa.firebaseapp.com)
+<p align="center">
+    <a href="https://elm-hnpwa.firebaseapp.com" rel="noopener" target="_blank">
+        <img alt="Site screenshot" src="elm-mobile.png" height="400">
+    <br>
+        Open Elm HNPWA
+    </a>
+</p>
 
 ## Perfomance
 - Lighthouse: 91/100
