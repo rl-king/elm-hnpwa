@@ -6,6 +6,7 @@ $g2:    #444;
 $b1:    #111;
 $b2:    #333;
 $green: #27C37F;
+$yellow:#f7dc64;
 
 
 html {
@@ -147,10 +148,14 @@ header {
     span {
         text-align: center;
         display: inline-block;
-        background-color: $w2;
+        background-color: $yellow;
         border-radius: 2px;
         padding: .5rem .75rem;
-        font-weight: 500;
+    }
+
+    .inactive {
+        background-color: transparent;
+        color: $g1;
     }
 
     nav {

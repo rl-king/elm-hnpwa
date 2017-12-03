@@ -8,7 +8,7 @@ A simple Hacker News client written in Elm.
 
 ## Features
 - Completely written in Elm 0.18
-- Cache requested resources in sessios
+- Cache requested resources in session
 - Service worker for offline use
 
 ## Develop

@@ -210,13 +210,13 @@ viewPagination route =
 nextPageLink : Route -> Html Msg
 nextPageLink route =
     Maybe.map (flip link [ text "Next" ]) (Route.toNext route)
-        |> Maybe.withDefault (text "")
+        |> Maybe.withDefault (span [ class "inactive" ] [ text "Next" ])
 
 
 previousPageLink : Route -> Html Msg
 previousPageLink route =
     Maybe.map (flip link [ text "Previous" ]) (Route.toPrevious route)
-        |> Maybe.withDefault (text "")
+        |> Maybe.withDefault (span [ class "inactive" ] [ text "Previous" ])
 
 
 paginationLink : Route -> Int -> Html Msg
