@@ -8,7 +8,7 @@ import Html.Lazy as Lazy
 import Http exposing (get, send)
 import Json.Decode as D exposing (..)
 import Json.Decode.Pipeline as P exposing (decode, optional, required)
-import Markdown exposing (toHtml)
+import Json.Encode as E exposing (..)
 import Navigation exposing (Location)
 import Route exposing (Route)
 import Svg
@@ -103,7 +103,7 @@ view { page, route } =
         viewPage =
             case page of
                 Feed items ->
-                    Lazy.lazy2 viewList route items
+                    viewList route items
 
                 Article item ->
                     viewItem item
@@ -121,7 +121,7 @@ view { page, route } =
                     viewNotFound
     in
     main_ []
-        [ viewHeader route
+        [ Lazy.lazy viewHeader route
         , section [ id "content" ] [ viewPage ]
         ]
 
@@ -239,7 +239,7 @@ viewItem item =
             , span [ class "domain" ] [ text item.domain ]
             , itemFooter item
             ]
-        , Markdown.toHtml [] item.content
+        , rawHtml div item.content
         , section [ class "comments-view" ]
             [ viewComments (getComments item.comments)
             ]
@@ -275,7 +275,7 @@ commentView item =
             [ link (Route.User item.user) [ text item.user ]
             , text (" " ++ item.timeAgo)
             ]
-        , Markdown.toHtml [] item.content
+        , rawHtml div item.content
         , viewComments (getComments item.comments)
         ]
 
@@ -336,6 +336,15 @@ htmlErrorToString error =
 
         Http.BadUrl _ ->
             "The Hackernews API seems to have changed"
+
+
+
+--VIEW HELPERS
+
+
+rawHtml : (List (Attribute Msg) -> List (Html Msg) -> Html Msg) -> String -> Html Msg
+rawHtml node htmlString =
+    node [ property "innerHTML" (E.string htmlString) ] []
 
 
 
