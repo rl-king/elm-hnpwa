@@ -1,5 +1,7 @@
 # Elm Hacker News Progressive Web App
-A simple Hacker News client written in Elm.
+A [HNPWA](https://hnpwa.com) implementation written in [Elm 0.18](http://elm-lang.org)
+
+Url: [https://elm-hnpwa.firebaseapp.com](https://elm-hnpwa.firebaseapp.com)
 
 ## Perfomance
 - Lighthouse: 91/100
