@@ -178,7 +178,7 @@ aside {
 }
 
 article {
-    padding: 1rem;
+    padding: 0 1rem 1rem;
 
     footer {
         margin-top: 0.5rem;
@@ -200,7 +200,7 @@ article {
 }
 
 .comments-view {
-    margin-left: -1.5rem;
+    margin-left: -1rem;
     border: 0;
 
     ul:first-child {
@@ -229,11 +229,11 @@ article {
 }
 
 .githublink {
-    margin-left: 0.5rem;
+    position: absolute;
     -webkit-font-smoothing: antialiased;
+    right: 1rem;
 
     @media (min-width: 768px) {
-        position: absolute;
         right: 2rem;
     }
 }

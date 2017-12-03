@@ -143,7 +143,13 @@ viewHeader route =
                 , Route.Feeds Route.Jobs Nothing
                 ]
             )
-        , a [ class "githublink", href "https://github.com/rl-king/elm-hnpwa" ] [ text "About" ]
+        , a
+            [ class "githublink"
+            , href "https://github.com/rl-king/elm-hnpwa"
+            , target "_blank"
+            , rel "noopener"
+            ]
+            [ text "About" ]
         ]
 
 
