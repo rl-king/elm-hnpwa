@@ -3,8 +3,8 @@ A simple Hacker News client written in Elm.
 
 ## Perfomance
 - Lighthouse: 91/100
-- Interactive (Emerging Markets): 5.4s
-- Interactive (Faster 3G): 4.0s
+- Interactive (Emerging Markets): 4.3s
+- Interactive (Faster 3G): 3.5s
 
 ## Features
 - Completely written in Elm 0.18
