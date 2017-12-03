@@ -215,6 +215,10 @@ article {
     a {
         word-break: break-all;
     }
+
+    @media (min-width: 768px) {
+        margin-left: -1.5rem;
+    }
 }
 
 .comment-meta {
