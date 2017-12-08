@@ -78,6 +78,9 @@ toFeedPage route =
         Feeds _ (Just page) ->
             page
 
+        Feeds _ Nothing ->
+            1
+
         _ ->
             0
 
