@@ -175,6 +175,14 @@ header {
         }
     }
 
+    .mobile span {
+        background-color: transparent;
+        padding: .5rem .25rem;
+
+        @media (min-width: 768px) {
+            display: none;
+        }
+    }
 }
 
 .domain {

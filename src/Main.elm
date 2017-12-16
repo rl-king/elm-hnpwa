@@ -198,7 +198,12 @@ viewPagination route =
         Just total ->
             section [ class "pagination" ]
                 [ previousPageLink route
-                , nav [] (List.map (paginationLink route) (List.range 1 total))
+                , nav [] (List.map (paginationDesktop route) (List.range 1 total))
+                , div [ class "mobile" ]
+                    [ span [] [ text (toString (Route.toFeedPage route)) ]
+                    , span [] [ text "/" ]
+                    , span [] [ text (toString total) ]
+                    ]
                 , nextPageLink route
                 ]
 
@@ -218,8 +223,8 @@ previousPageLink route =
         |> Maybe.withDefault (span [ class "inactive" ] [ text "Previous" ])
 
 
-paginationLink : Route -> Int -> Html Msg
-paginationLink route page =
+paginationDesktop : Route -> Int -> Html Msg
+paginationDesktop route page =
     if page == Route.toFeedPage route then
         span [ attribute "aria-current" "page" ] [ text (toString page) ]
     else
@@ -315,11 +320,11 @@ viewNotFound =
 
 viewError : Http.Error -> Html Msg
 viewError error =
-    div [ class "notification" ] [ text (htmlErrorToString error) ]
+    div [ class "notification" ] [ text (httpErrorToString error) ]
 
 
-htmlErrorToString : Http.Error -> String
-htmlErrorToString error =
+httpErrorToString : Http.Error -> String
+httpErrorToString error =
     case error of
         Http.Timeout ->
             "Timeout"
