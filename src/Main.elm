@@ -66,7 +66,7 @@ init location =
 
 
 type Msg
-    = NewUrl String
+    = NewUrl Route
     | OnNavigation Location
     | GotItem Int (Result Http.Error Item)
     | GotUser String (Result Http.Error User)
@@ -77,7 +77,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ({ session } as model) =
     case msg of
         NewUrl url ->
-            ( model, Navigation.newUrl url )
+            ( model, Navigation.newUrl (Route.toUrl url) )
 
         OnNavigation location ->
             check { model | route = Route.parse location }
@@ -357,7 +357,7 @@ rawHtml node htmlString =
 
 link : Route -> List (Html Msg) -> Html Msg
 link route kids =
-    a [ href (Route.toUrl route), onPreventDefaultClick (Route.toMsg route NewUrl) ] kids
+    a [ href (Route.toUrl route), onPreventDefaultClick (NewUrl route) ] kids
 
 
 onPreventDefaultClick : Msg -> Attribute Msg

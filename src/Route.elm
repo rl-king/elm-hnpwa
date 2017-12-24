@@ -57,11 +57,6 @@ toUrl =
     toRouteData >> .url
 
 
-toMsg : Route -> (String -> msg) -> msg
-toMsg route msg =
-    msg (toUrl route)
-
-
 toApi : Route -> String
 toApi =
     toRouteData >> .api
