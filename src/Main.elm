@@ -177,15 +177,15 @@ viewListItem index item =
     li []
         [ aside [] [ text (toString (index + 1)) ]
         , div []
-            [ itemUrl item.id item.url item.title
+            [ listItemUrl item.id item.url item.title
             , span [ class "domain" ] [ text item.domain ]
             , itemFooter item
             ]
         ]
 
 
-itemUrl : Int -> String -> String -> Html Msg
-itemUrl id url title =
+listItemUrl : Int -> String -> String -> Html Msg
+listItemUrl id url title =
     if String.contains "item?id=" url then
         link (Route.Item id) [ text title ]
     else
@@ -239,7 +239,7 @@ viewItem : Item -> Html Msg
 viewItem item =
     article []
         [ section []
-            [ h2 [] [ text item.title ]
+            [ itemUrl item.id item.url item.title
             , span [ class "domain" ] [ text item.domain ]
             , itemFooter item
             ]
@@ -248,6 +248,14 @@ viewItem item =
             [ viewComments (getComments item.comments)
             ]
         ]
+
+
+itemUrl : Int -> String -> String -> Html Msg
+itemUrl id url title =
+    if String.contains "item?id=" url then
+        h2 [] [ text title ]
+    else
+        a [ href url, target "_blank", rel "noopener" ] [ h2 [] [ text title ] ]
 
 
 itemFooter : Item -> Html Msg

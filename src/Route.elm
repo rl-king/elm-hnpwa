@@ -36,7 +36,7 @@ parse =
 route : Url.Parser (Route -> a) a
 route =
     Url.oneOf
-        [ Url.map (Feeds Top) (top <?> intParam "page")
+        [ Url.map (Feeds Top (Just 1)) top
         , Url.map (Feeds Top) (s "top" <?> intParam "page")
         , Url.map (Feeds New) (s "new" <?> intParam "page")
         , Url.map (Feeds Ask) (s "ask" <?> intParam "page")
@@ -98,9 +98,6 @@ toNext route =
                 Just (mapFeedPage ((+) 1) route)
             else
                 Nothing
-
-        ( _, Feeds feed Nothing ) ->
-            Just (Feeds feed (Just 2))
 
         _ ->
             Nothing
