@@ -5,7 +5,10 @@ A [HNPWA](https://hnpwa.com) implementation written in [Elm 0.18](http://elm-lan
     <a href="https://elm-hnpwa.firebaseapp.com" rel="noopener" target="_blank">
         <img alt="Site screenshot" src="elm-mobile.png" height="400">
     <br>
-        Open Elm HNPWA
+        Elm HNPWA
+    </a> /
+    <a href="https://elm-hnpwa-debug.firebaseapp.com/" rel="noopener" target="_blank">
+        Elm HNPWA with time-traveling debugger
     </a>
 </p>
 
