@@ -9,6 +9,15 @@
     ],
     "headers": [
       {
+        "source": "service-worker.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=0"
+          }
+        ]
+      },
+      {
         "source": "**/*.@(eot|otf|ttf|ttc|woff|font.css)",
         "headers": [
           {
@@ -32,6 +41,15 @@
           {
             "key": "Cache-Control",
             "value": "max-age=604800"
+          }
+        ]
+      },
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Link",
+            "value": "<https://hnpwa.com>;rel=preconnect;crossorigin"
           }
         ]
       }
