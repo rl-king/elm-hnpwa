@@ -14,6 +14,9 @@ import Svg
 import Svg.Attributes as SA
 
 
+-- MAIN
+
+
 main : Program Never Model Msg
 main =
     Navigation.program OnNavigation
@@ -292,6 +295,20 @@ commentView item =
 
 
 
+-- COMMENTS HELPER
+
+
+getComments : Comments -> List Item
+getComments comments =
+    case comments of
+        Comments items ->
+            items
+
+        Empty ->
+            []
+
+
+
 -- USER VIEW
 
 
@@ -315,38 +332,45 @@ viewRow x y =
         ]
 
 
+
+-- ERROR AND NOTIFICATION VIEWS
+
+
+viewNotification : Html msg -> Html msg
+viewNotification content =
+    div [ class "notification" ] [ content ]
+
+
 viewLoading : Html Msg
 viewLoading =
-    div [ class "notification" ] [ div [ class "spinner" ] [] ]
+    viewNotification <|
+        div [ class "spinner" ] []
 
 
 viewNotFound : Html Msg
 viewNotFound =
-    div [ class "notification" ] [ text "404" ]
+    viewNotification <|
+        text "404"
 
 
 viewError : Http.Error -> Html Msg
 viewError error =
-    div [ class "notification" ] [ text (httpErrorToString error) ]
+    (viewNotification << text) <|
+        case error of
+            Http.Timeout ->
+                "Timeout"
 
+            Http.NetworkError ->
+                "NetworkError | You seem to be offline"
 
-httpErrorToString : Http.Error -> String
-httpErrorToString error =
-    case error of
-        Http.Timeout ->
-            "Timeout"
+            Http.BadStatus { status } ->
+                "BadStatus | The server gave me a " ++ toString status.code ++ " error"
 
-        Http.NetworkError ->
-            "NetworkError | You seem to be offline"
+            Http.BadPayload _ _ ->
+                "BadPayload | The server gave me back something I did not expect"
 
-        Http.BadStatus { status } ->
-            "BadStatus | The server gave me a " ++ toString status.code ++ " error"
-
-        Http.BadPayload _ _ ->
-            "BadPayload | The server gave me back something I did not expect"
-
-        Http.BadUrl _ ->
-            "The Hackernews API seems to have changed"
+            Http.BadUrl _ ->
+                "The Hackernews API seems to have changed"
 
 
 
@@ -388,20 +412,6 @@ eventDecoder msg preventDefault =
         D.succeed msg
     else
         D.fail ""
-
-
-
--- COMMENT HELPER
-
-
-getComments : Comments -> List Item
-getComments comments =
-    case comments of
-        Comments items ->
-            items
-
-        Empty ->
-            []
 
 
 
