@@ -12,7 +12,6 @@ import Navigation exposing (Location)
 import Route exposing (Route)
 import Svg
 import Svg.Attributes as SA
-import Types exposing (..)
 
 
 main : Program Never Model Msg
@@ -409,36 +408,41 @@ getComments comments =
 -- ROUTE TO REQUEST
 
 
+type Load result cmd
+    = Show result
+    | Get cmd
+
+
 check : Model -> ( Model, Cmd Msg )
 check ({ route, session } as model) =
     case checkHelper route session of
-        Go (Ok page) ->
+        Show (Ok page) ->
             ( { model | page = page }, Cmd.none )
 
-        Go (Err err) ->
+        Show (Err err) ->
             ( { model | page = Error err }, Cmd.none )
 
         Get cmd ->
             ( { model | page = Loading }, cmd )
 
 
-checkHelper : Route -> Session -> PageHelper (Result Http.Error Page) (Cmd Msg)
+checkHelper : Route -> Session -> Load (Result Http.Error Page) (Cmd Msg)
 checkHelper route session =
     case route of
         Route.Feeds _ _ ->
-            Maybe.map (Go << Result.map Feed) (Dict.get (Route.toApi route) session.feeds)
+            Maybe.map (Show << Result.map Feed) (Dict.get (Route.toApi route) session.feeds)
                 |> Maybe.withDefault (Get (requestFeed route))
 
         Route.Item id ->
-            Maybe.map (Go << Result.map Article) (Dict.get id session.items)
+            Maybe.map (Show << Result.map Article) (Dict.get id session.items)
                 |> Maybe.withDefault (Get (requestItem id))
 
         Route.User id ->
-            Maybe.map (Go << Result.map Profile) (Dict.get id session.users)
+            Maybe.map (Show << Result.map Profile) (Dict.get id session.users)
                 |> Maybe.withDefault (Get (requestUser id))
 
         _ ->
-            Go (Ok NotFound)
+            Show (Ok NotFound)
 
 
 
@@ -469,7 +473,35 @@ requestFeed route =
 
 
 
---DECODERS
+-- DATATYPES AND DECODERS
+
+
+type alias Item =
+    { id : Int
+    , title : String
+    , points : Int
+    , user : String
+    , timeAgo : String
+    , url : String
+    , domain : String
+    , commentsCount : Int
+    , comments : Comments
+    , content : String
+    , type_ : String
+    }
+
+
+type alias User =
+    { about : String
+    , created : String
+    , id : String
+    , karma : Int
+    }
+
+
+type Comments
+    = Comments (List Item)
+    | Empty
 
 
 decodeFeed : D.Decoder (List Item)
