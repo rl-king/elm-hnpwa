@@ -1,34 +1,40 @@
 module Main exposing (..)
 
+-- import Json.Decode.Pipeline as P exposing (decode, optional, required)
+
+import Browser
+import Browser.Navigation as Navigation
 import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (defaultOptions, onClick, onWithOptions)
+import Html.Events exposing (onClick)
 import Http exposing (get, send)
-import Json.Decode as D exposing (..)
-import Json.Decode.Pipeline as P exposing (decode, optional, required)
-import Json.Encode as E exposing (..)
-import Navigation exposing (Location)
+import Json.Decode as Decode
+import Json.Encode as Encode
 import Route exposing (Route)
 import Svg
 import Svg.Attributes as SA
+import Url
+
 
 
 -- MAIN
 
 
-main : Program Never Model Msg
 main =
-    Navigation.program OnNavigation
+    Browser.application
         { init = init
         , view = view
         , update = update
         , subscriptions = \_ -> Sub.none
+        , onUrlRequest = LinkClicked
+        , onUrlChange = UrlChanged
         }
 
 
 type alias Model =
-    { route : Route
+    { key : Navigation.Key
+    , route : Route
     , session : Session
     , page : Page
     }
@@ -54,10 +60,11 @@ type alias Session =
 --INIT
 
 
-init : Navigation.Location -> ( Model, Cmd Msg )
-init location =
+init : () -> Url.Url -> Navigation.Key -> ( Model, Cmd Msg )
+init _ url key =
     check
-        { route = Route.parse location
+        { key = key
+        , route = Route.parse url
         , page = Loading
         , session = Session Dict.empty Dict.empty Dict.empty
         }
@@ -68,8 +75,8 @@ init location =
 
 
 type Msg
-    = NewUrl Route
-    | OnNavigation Location
+    = LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
     | GotItem Int (Result Http.Error Item)
     | GotUser String (Result Http.Error User)
     | GotFeed String (Result Http.Error (List Item))
@@ -78,11 +85,14 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ({ session } as model) =
     case msg of
-        NewUrl url ->
-            ( model, Navigation.newUrl (Route.toUrl url) )
+        LinkClicked (Browser.Internal url) ->
+            ( model, Navigation.pushUrl model.key (Url.toString url) )
 
-        OnNavigation location ->
-            check { model | route = Route.parse location }
+        LinkClicked (Browser.External href) ->
+            ( model, Navigation.load href )
+
+        UrlChanged url ->
+            check { model | route = Route.parse url }
 
         GotItem id item ->
             check { model | session = { session | items = Dict.insert id item session.items } }
@@ -98,13 +108,13 @@ update msg ({ session } as model) =
 -- VIEW
 
 
-view : Model -> Html Msg
-view { page, route } =
+view : Model -> Browser.Document Msg
+view model =
     let
         viewPage =
-            case page of
+            case model.page of
                 Feed items ->
-                    viewList route items
+                    viewList model.route items
 
                 Article item ->
                     viewItem item
@@ -121,10 +131,14 @@ view { page, route } =
                 NotFound ->
                     viewNotFound
     in
-    main_ []
-        [ viewHeader route
-        , section [ id "content" ] [ viewPage ]
+    { title = Route.toTitle model.route
+    , body =
+        [ main_ []
+            [ viewHeader model.route
+            , section [ id "content" ] [ viewPage ]
+            ]
         ]
+    }
 
 
 
@@ -158,6 +172,7 @@ headerLink : Route -> Route -> Html Msg
 headerLink currentRoute route =
     if Route.toTitle currentRoute == Route.toTitle route then
         span [ attribute "aria-current" "page" ] [ text (Route.toTitle route) ]
+
     else
         link route [ text (Route.toTitle route) ]
 
@@ -177,7 +192,7 @@ viewList route feed =
 viewListItem : Int -> Item -> Html Msg
 viewListItem index item =
     li []
-        [ aside [] [ text (toString (index + 1)) ]
+        [ aside [] [ text (String.fromInt (index + 1)) ]
         , div []
             [ listItemUrl item.id item.url item.title
             , span [ class "domain" ] [ text item.domain ]
@@ -190,6 +205,7 @@ listItemUrl : Int -> String -> String -> Html Msg
 listItemUrl id url title =
     if String.contains "item?id=" url then
         link (Route.Item id) [ text title ]
+
     else
         a [ href url, target "_blank", rel "noopener" ] [ text title ]
 
@@ -202,9 +218,9 @@ viewPagination route =
                 [ previousPageLink route
                 , nav [] (List.map (paginationDesktop route) (List.range 1 total))
                 , div [ class "mobile" ]
-                    [ span [] [ text (toString (Route.toFeedPage route)) ]
+                    [ span [] [ text (String.fromInt (Route.toFeedPage route)) ]
                     , span [] [ text "/" ]
-                    , span [] [ text (toString total) ]
+                    , span [] [ text (String.fromInt total) ]
                     ]
                 , nextPageLink route
                 ]
@@ -215,22 +231,23 @@ viewPagination route =
 
 nextPageLink : Route -> Html Msg
 nextPageLink route =
-    Maybe.map (flip link [ text "Next" ]) (Route.toNext route)
+    Maybe.map (\x -> link x [ text "Next" ]) (Route.toNext route)
         |> Maybe.withDefault (span [ class "inactive" ] [ text "Next" ])
 
 
 previousPageLink : Route -> Html Msg
 previousPageLink route =
-    Maybe.map (flip link [ text "Previous" ]) (Route.toPrevious route)
+    Maybe.map (\x -> link x [ text "Previous" ]) (Route.toPrevious route)
         |> Maybe.withDefault (span [ class "inactive" ] [ text "Previous" ])
 
 
 paginationDesktop : Route -> Int -> Html Msg
 paginationDesktop route page =
     if page == Route.toFeedPage route then
-        span [ attribute "aria-current" "page" ] [ text (toString page) ]
+        span [ attribute "aria-current" "page" ] [ text (String.fromInt page) ]
+
     else
-        link (Route.mapFeedPage (\_ -> page) route) [ text (toString page) ]
+        link (Route.mapFeedPage (\_ -> page) route) [ text (String.fromInt page) ]
 
 
 
@@ -256,6 +273,7 @@ itemUrl : Int -> String -> String -> Html Msg
 itemUrl id url title =
     if String.contains "item?id=" url then
         h2 [] [ text title ]
+
     else
         a [ href url, target "_blank", rel "noopener" ] [ h2 [] [ text title ] ]
 
@@ -264,12 +282,13 @@ itemFooter : Item -> Html Msg
 itemFooter item =
     if item.type_ == "job" then
         footer [] [ text item.timeAgo ]
+
     else
         footer []
-            [ text (toString item.points ++ " points by ")
+            [ text (String.fromInt item.points ++ " points by ")
             , link (Route.User item.user) [ text item.user ]
             , text (" " ++ item.timeAgo ++ " | ")
-            , link (Route.Item item.id) [ text (toString item.commentsCount ++ " comments") ]
+            , link (Route.Item item.id) [ text (String.fromInt item.commentsCount ++ " comments") ]
             ]
 
 
@@ -318,7 +337,7 @@ viewUser user =
         [ table []
             [ viewRow "user:" user.id
             , viewRow "created:" user.created
-            , viewRow "karma:" (toString user.karma)
+            , viewRow "karma:" (String.fromInt user.karma)
             , viewRow "about:" user.about
             ]
         ]
@@ -364,7 +383,7 @@ viewError error =
                 "NetworkError | You seem to be offline"
 
             Http.BadStatus { status } ->
-                "BadStatus | The server gave me a " ++ toString status.code ++ " error"
+                "BadStatus | The server gave me a " ++ String.fromInt status.code ++ " error"
 
             Http.BadPayload _ _ ->
                 "BadPayload | The server gave me back something I did not expect"
@@ -379,7 +398,7 @@ viewError error =
 
 rawHtml : (List (Attribute Msg) -> List (Html Msg) -> Html Msg) -> String -> Html Msg
 rawHtml node htmlString =
-    node [ property "innerHTML" (E.string htmlString) ] []
+    node [ property "innerHTML" (Encode.string htmlString) ] []
 
 
 
@@ -388,30 +407,7 @@ rawHtml node htmlString =
 
 link : Route -> List (Html Msg) -> Html Msg
 link route kids =
-    a [ href (Route.toUrl route), onPreventDefaultClick (NewUrl route) ] kids
-
-
-onPreventDefaultClick : Msg -> Attribute Msg
-onPreventDefaultClick msg =
-    onWithOptions "click"
-        { defaultOptions | preventDefault = True }
-        (D.andThen (eventDecoder msg) eventKeyDecoder)
-
-
-eventKeyDecoder : Decoder Bool
-eventKeyDecoder =
-    D.map2
-        (not >> xor)
-        (D.field "ctrlKey" D.bool)
-        (D.field "metaKey" D.bool)
-
-
-eventDecoder : msg -> Bool -> Decoder msg
-eventDecoder msg preventDefault =
-    if preventDefault then
-        D.succeed msg
-    else
-        D.fail ""
+    a [ href (Route.toUrl route) ] kids
 
 
 
@@ -466,7 +462,7 @@ endpoint =
 
 requestItem : Int -> Cmd Msg
 requestItem id =
-    Http.get (endpoint ++ "item/" ++ toString id ++ ".json") decodeItem
+    Http.get (endpoint ++ "item/" ++ String.fromInt id ++ ".json") decodeItem
         |> Http.send (GotItem id)
 
 
@@ -514,42 +510,55 @@ type Comments
     | Empty
 
 
-decodeFeed : D.Decoder (List Item)
+decodeFeed : Decode.Decoder (List Item)
 decodeFeed =
-    D.list decodeItem
+    Decode.fail ""
 
 
-decodeItem : D.Decoder Item
+
+-- D.list decodeItem
+
+
+decodeItem : Decode.Decoder Item
 decodeItem =
-    P.decode Item
-        |> P.required "id" D.int
-        |> P.optional "title" D.string "No title"
-        |> P.optional "points" D.int 0
-        |> P.optional "user" D.string ""
-        |> P.required "time_ago" D.string
-        |> P.optional "url" D.string ""
-        |> P.optional "domain" D.string ""
-        |> P.required "comments_count" D.int
-        |> P.optional "comments" (D.lazy (\_ -> decodeComments)) Empty
-        |> P.optional "content" D.string ""
-        |> P.required "type" D.string
+    Decode.fail ""
 
 
-decodeUser : D.Decoder User
+
+-- P.decode Item
+--     |> P.required "id" D.int
+--     |> P.optional "title" D.string "No title"
+--     |> P.optional "points" D.int 0
+--     |> P.optional "user" D.string ""
+--     |> P.required "time_ago" D.string
+--     |> P.optional "url" D.string ""
+--     |> P.optional "domain" D.string ""
+--     |> P.required "comments_count" D.int
+--     |> P.optional "comments" (D.lazy (\_ -> decodeComments)) Empty
+--     |> P.optional "content" D.string ""
+--     |> P.required "type" D.string
+
+
+decodeUser : Decode.Decoder User
 decodeUser =
-    P.decode User
-        |> P.optional "title" D.string ""
-        |> P.required "created" D.string
-        |> P.required "id" D.string
-        |> P.required "karma" D.int
+    Decode.fail ""
 
 
-decodeComments : Decoder Comments
+
+-- P.decode User
+--     |> P.optional "title" D.string ""
+--     |> P.required "created" D.string
+--     |> P.required "id" D.string
+--     |> P.required "karma" D.int
+
+
+decodeComments : Decode.Decoder Comments
 decodeComments =
-    D.map Comments (D.list (D.lazy (\_ -> decodeItem)))
+    Decode.fail ""
 
 
 
+-- D.map Comments (D.list (D.lazy (\_ -> decodeItem)))
 -- LOGO
 
 
