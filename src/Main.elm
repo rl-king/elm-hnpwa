@@ -1,7 +1,5 @@
 module Main exposing (..)
 
--- import Json.Decode.Pipeline as P exposing (decode, optional, required)
-
 import Browser
 import Browser.Navigation as Navigation
 import Dict
@@ -10,6 +8,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Http exposing (get, send)
 import Json.Decode as Decode
+import Json.Decode.Pipeline as Pipeline
 import Json.Encode as Encode
 import Route exposing (Route)
 import Svg
@@ -30,6 +29,10 @@ main =
         , onUrlRequest = LinkClicked
         , onUrlChange = UrlChanged
         }
+
+
+
+-- MODEL
 
 
 type alias Model =
@@ -512,53 +515,40 @@ type Comments
 
 decodeFeed : Decode.Decoder (List Item)
 decodeFeed =
-    Decode.fail ""
-
-
-
--- D.list decodeItem
+    Decode.list decodeItem
 
 
 decodeItem : Decode.Decoder Item
 decodeItem =
-    Decode.fail ""
-
-
-
--- P.decode Item
---     |> P.required "id" D.int
---     |> P.optional "title" D.string "No title"
---     |> P.optional "points" D.int 0
---     |> P.optional "user" D.string ""
---     |> P.required "time_ago" D.string
---     |> P.optional "url" D.string ""
---     |> P.optional "domain" D.string ""
---     |> P.required "comments_count" D.int
---     |> P.optional "comments" (D.lazy (\_ -> decodeComments)) Empty
---     |> P.optional "content" D.string ""
---     |> P.required "type" D.string
+    Decode.succeed Item
+        |> Pipeline.required "id" Decode.int
+        |> Pipeline.optional "title" Decode.string "No title"
+        |> Pipeline.optional "points" Decode.int 0
+        |> Pipeline.optional "user" Decode.string ""
+        |> Pipeline.required "time_ago" Decode.string
+        |> Pipeline.optional "url" Decode.string ""
+        |> Pipeline.optional "domain" Decode.string ""
+        |> Pipeline.required "comments_count" Decode.int
+        |> Pipeline.optional "comments" (Decode.lazy (\_ -> decodeComments)) Empty
+        |> Pipeline.optional "content" Decode.string ""
+        |> Pipeline.required "type" Decode.string
 
 
 decodeUser : Decode.Decoder User
 decodeUser =
-    Decode.fail ""
-
-
-
--- P.decode User
---     |> P.optional "title" D.string ""
---     |> P.required "created" D.string
---     |> P.required "id" D.string
---     |> P.required "karma" D.int
+    Decode.succeed User
+        |> Pipeline.optional "title" Decode.string ""
+        |> Pipeline.required "created" Decode.string
+        |> Pipeline.required "id" Decode.string
+        |> Pipeline.required "karma" Decode.int
 
 
 decodeComments : Decode.Decoder Comments
 decodeComments =
-    Decode.fail ""
+    Decode.map Comments (Decode.list (Decode.lazy (\_ -> decodeItem)))
 
 
 
--- D.map Comments (D.list (D.lazy (\_ -> decodeItem)))
 -- LOGO
 
 
