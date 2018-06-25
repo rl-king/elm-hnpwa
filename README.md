@@ -1,5 +1,5 @@
 # Elm Hacker News Progressive Web App
-A [HNPWA](https://hnpwa.com) implementation written in [Elm 0.18](http://elm-lang.org)
+A [HNPWA](https://hnpwa.com) implementation written in [Elm 0.19](http://elm-lang.org)
 
 <p align="center">
     <a href="https://elm-hnpwa.firebaseapp.com" rel="noopener" target="_blank">
@@ -18,25 +18,20 @@ A [HNPWA](https://hnpwa.com) implementation written in [Elm 0.18](http://elm-lan
 - Interactive (Faster 3G): 3.5s
 
 ## Features
-- Completely written in Elm 0.18
+- Completely written in Elm 0.19
 - Cache requested resources in session
 - Service worker for offline use
 
 ## Develop
-Install Elm, Elm-format and Webpack dependencies
+Install Elm, Elm-format and other dependencies
 ```
-npm install
+make deps
 ```
-Start Webpack dev server with HMR
-
+Start dev server 
 ```
-npm start
+make watch
 ```
-Run Webpack build
-
+Build, compile optimized Elm, generate Service Worker and minify assets
 ```
-npm run build
+make build
 ```
-
-## Todo
-- SSR (Waiting for Elm 0.19)
