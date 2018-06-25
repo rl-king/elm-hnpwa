@@ -25,6 +25,8 @@
     <link rel="apple-touch-icon" sizes="144x144" href="/icon-144x144.png">
     <link rel="apple-touch-icon" sizes="192x192" href="/icon-192x192.png">
 
+    <link rel="stylesheet" href="dist/style.css">
+    <script src="dist/main.js"></script>
 </head>
 
 <body>
@@ -34,6 +36,16 @@
     <div class="notification">
         <div class="spinner"></div>
     </div>
+
+    <script>
+
+        var app = Elm.Main.fullscreen();
+
+        window.addEventListener("load", function() {
+            document.querySelector(".notification").remove();
+        });
+
+    </script>
 </body>
 
 </html>
