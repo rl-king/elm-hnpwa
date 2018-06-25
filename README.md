@@ -27,9 +27,10 @@ Install Elm, Elm-format and other dependencies
 ```
 make deps
 ```
-Start dev server 
+Compile on file change and start dev server 
 ```
 make watch
+make serve
 ```
 Build, compile optimized Elm, generate Service Worker and minify assets
 ```
