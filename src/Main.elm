@@ -38,7 +38,7 @@ main =
 type alias Model =
     { key : Navigation.Key
     , route : Route
-    , session : Session
+    , cache : Cache
     , page : Page
     }
 
@@ -52,7 +52,7 @@ type Page
     | NotFound
 
 
-type alias Session =
+type alias Cache =
     { feeds : Dict.Dict String (Result Http.Error (List Item))
     , items : Dict.Dict Int (Result Http.Error Item)
     , users : Dict.Dict String (Result Http.Error User)
@@ -69,7 +69,7 @@ init _ url key =
         { key = key
         , route = Route.parse url
         , page = Loading
-        , session = Session Dict.empty Dict.empty Dict.empty
+        , cache = Cache Dict.empty Dict.empty Dict.empty
         }
 
 
@@ -86,7 +86,7 @@ type Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ session } as model) =
+update msg ({ cache } as model) =
     case msg of
         LinkClicked (Browser.Internal url) ->
             ( model, Navigation.pushUrl model.key (Url.toString url) )
@@ -98,13 +98,13 @@ update msg ({ session } as model) =
             check { model | route = Route.parse url }
 
         GotItem id item ->
-            check { model | session = { session | items = Dict.insert id item session.items } }
+            check { model | cache = { cache | items = Dict.insert id item cache.items } }
 
         GotUser id user ->
-            check { model | session = { session | users = Dict.insert id user session.users } }
+            check { model | cache = { cache | users = Dict.insert id user cache.users } }
 
         GotFeed id feed ->
-            check { model | session = { session | feeds = Dict.insert id feed session.feeds } }
+            check { model | cache = { cache | feeds = Dict.insert id feed cache.feeds } }
 
 
 
@@ -423,8 +423,8 @@ type Load result cmd
 
 
 check : Model -> ( Model, Cmd Msg )
-check ({ route, session } as model) =
-    case checkHelper route session of
+check ({ route, cache } as model) =
+    case checkHelper route cache of
         Show (Ok page) ->
             ( { model | page = page }, Cmd.none )
 
@@ -435,19 +435,19 @@ check ({ route, session } as model) =
             ( { model | page = Loading }, cmd )
 
 
-checkHelper : Route -> Session -> Load (Result Http.Error Page) (Cmd Msg)
-checkHelper route session =
+checkHelper : Route -> Cache -> Load (Result Http.Error Page) (Cmd Msg)
+checkHelper route cache =
     case route of
         Route.Feeds _ _ ->
-            Maybe.map (Show << Result.map Feed) (Dict.get (Route.toApi route) session.feeds)
+            Maybe.map (Show << Result.map Feed) (Dict.get (Route.toApi route) cache.feeds)
                 |> Maybe.withDefault (Get (requestFeed route))
 
         Route.Item id ->
-            Maybe.map (Show << Result.map Article) (Dict.get id session.items)
+            Maybe.map (Show << Result.map Article) (Dict.get id cache.items)
                 |> Maybe.withDefault (Get (requestItem id))
 
         Route.User id ->
-            Maybe.map (Show << Result.map Profile) (Dict.get id session.users)
+            Maybe.map (Show << Result.map Profile) (Dict.get id cache.users)
                 |> Maybe.withDefault (Get (requestUser id))
 
         _ ->
