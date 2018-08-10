@@ -460,7 +460,7 @@ checkHelper route cache =
 
 endpoint : String
 endpoint =
-    "https://hnpwa.com/api/v0/"
+    "https://api.hnpwa.com/v0"
 
 
 requestItem : Int -> Cmd Msg
