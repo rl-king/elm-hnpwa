@@ -135,10 +135,10 @@ toRouteData route =
             Maybe.withDefault (toFeedData feed 1) (Maybe.map (toFeedData feed) param)
 
         Item x ->
-            RouteData "Item" (Builder.absolute [ "item", String.fromInt x ++ ".json" ] []) "item" Nothing
+            RouteData "Item" (Builder.absolute [ "item", String.fromInt x ] []) "item" Nothing
 
         User x ->
-            RouteData "User" (Builder.absolute [ "user", x ++ ".json" ] []) "user" Nothing
+            RouteData "User" (Builder.absolute [ "user", x ] []) "user" Nothing
 
         NotFound ->
             RouteData "404" (Builder.absolute [ "404" ] []) "404" Nothing
