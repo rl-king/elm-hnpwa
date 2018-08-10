@@ -10,6 +10,7 @@ import Http exposing (get, send)
 import Json.Decode as Decode
 import Json.Decode.Pipeline as Pipeline
 import Json.Encode as Encode
+import Markdown exposing (defaultOptions)
 import Route exposing (Route)
 import Svg
 import Svg.Attributes as SA
@@ -134,7 +135,7 @@ view model =
                 NotFound ->
                     viewNotFound
     in
-    { title = Route.toTitle model.route
+    { title = "Elm HNPWA | " ++ Route.toTitle model.route
     , body =
         [ main_ []
             [ viewHeader model.route
@@ -265,7 +266,7 @@ viewItem item =
             , span [ class "domain" ] [ text item.domain ]
             , itemFooter item
             ]
-        , rawHtml div item.content
+        , rawHtml item.content
         , section [ class "comments-view" ]
             [ viewComments (getComments item.comments)
             ]
@@ -311,7 +312,7 @@ commentView item =
             [ link (Route.User item.user) [ text item.user ]
             , text (" " ++ item.timeAgo)
             ]
-        , rawHtml div item.content
+        , rawHtml item.content
         , viewComments (getComments item.comments)
         ]
 
@@ -399,9 +400,9 @@ viewError error =
 --VIEW HELPERS
 
 
-rawHtml : (List (Attribute Msg) -> List (Html Msg) -> Html Msg) -> String -> Html Msg
-rawHtml node htmlString =
-    node [ property "innerHTML" (Encode.string htmlString) ] []
+rawHtml : String -> Html Msg
+rawHtml =
+    Markdown.toHtmlWith { defaultOptions | smartypants = True } []
 
 
 
@@ -465,13 +466,13 @@ endpoint =
 
 requestItem : Int -> Cmd Msg
 requestItem id =
-    Http.get (endpoint ++ "item/" ++ String.fromInt id ++ ".json") decodeItem
+    Http.get (endpoint ++ "/item/" ++ String.fromInt id ++ ".json") decodeItem
         |> Http.send (GotItem id)
 
 
 requestUser : String -> Cmd Msg
 requestUser id =
-    Http.get (endpoint ++ "user/" ++ id ++ ".json") decodeUser
+    Http.get (endpoint ++ "/user/" ++ id ++ ".json") decodeUser
         |> Http.send (GotUser id)
 
 
