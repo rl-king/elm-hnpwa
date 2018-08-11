@@ -69,5 +69,5 @@ watch-scss:
 
 watch:
 		make livereload & \
-		find ${SRC_DIR}/src -name '*.scss' | entr make scss & \
-		find ${SRC_DIR}/src -name '*.elm' | entr make elm
+		find ${SRC_DIR} -name '*.scss' | entr make scss & \
+		find ${SRC_DIR} -name '*.elm' | entr make elm

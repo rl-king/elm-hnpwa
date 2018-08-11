@@ -402,7 +402,7 @@ viewError error =
 
 rawHtml : String -> Html Msg
 rawHtml =
-    Markdown.toHtmlWith { defaultOptions | smartypants = True } []
+    Markdown.toHtmlWith { defaultOptions | sanitize = False } []
 
 
 
