@@ -1,7 +1,14 @@
 module Route exposing (..)
 
-import Navigation exposing (Location)
-import UrlParser as Url exposing (..)
+import Url
+import Url.Builder as Builder
+import Url.Parser as Parser
+    exposing
+        ( (</>)
+        , (<?>)
+        , Parser
+        )
+import Url.Parser.Query as Query
 
 
 type Route
@@ -28,23 +35,23 @@ type alias RouteData =
     }
 
 
-parse : Location -> Route
+parse : Url.Url -> Route
 parse =
-    Url.parsePath route >> Maybe.withDefault NotFound
-
-
-route : Url.Parser (Route -> a) a
-route =
-    Url.oneOf
-        [ Url.map (Feeds Top (Just 1)) top
-        , Url.map (Feeds Top) (s "top" <?> intParam "page")
-        , Url.map (Feeds New) (s "new" <?> intParam "page")
-        , Url.map (Feeds Ask) (s "ask" <?> intParam "page")
-        , Url.map (Feeds Show) (s "show" <?> intParam "page")
-        , Url.map (Feeds Jobs) (s "jobs" <?> intParam "page")
-        , Url.map Item (s "item" </> int)
-        , Url.map User (s "user" </> string)
-        ]
+    let
+        parser =
+            Parser.oneOf
+                [ Parser.map (Feeds Top (Just 1)) Parser.top
+                , Parser.map (Feeds Top) (Parser.s "top" <?> Query.int "page")
+                , Parser.map (Feeds New) (Parser.s "new" <?> Query.int "page")
+                , Parser.map (Feeds Ask) (Parser.s "ask" <?> Query.int "page")
+                , Parser.map (Feeds Show) (Parser.s "show" <?> Query.int "page")
+                , Parser.map (Feeds Jobs) (Parser.s "jobs" <?> Query.int "page")
+                , Parser.map Item (Parser.s "item" </> Parser.int)
+                , Parser.map User (Parser.s "user" </> Parser.string)
+                ]
+    in
+    Parser.parse parser
+        >> Maybe.withDefault NotFound
 
 
 toTitle : Route -> String
@@ -96,6 +103,7 @@ toNext route =
         ( Just max, Feeds feed (Just page) ) ->
             if page < max then
                 Just (mapFeedPage ((+) 1) route)
+
             else
                 Nothing
 
@@ -108,7 +116,8 @@ toPrevious route =
     case route of
         Feeds feed (Just page) ->
             if page > 1 then
-                Just (mapFeedPage (flip (-) 1) route)
+                Just (mapFeedPage (\x -> x - 1) route)
+
             else
                 Nothing
 
@@ -120,35 +129,42 @@ toRouteData : Route -> RouteData
 toRouteData route =
     case route of
         Root ->
-            RouteData "Top" "/" "news.json" Nothing
+            RouteData "Top" (Builder.absolute [] []) "news.json" Nothing
 
         Feeds feed param ->
             Maybe.withDefault (toFeedData feed 1) (Maybe.map (toFeedData feed) param)
 
         Item x ->
-            RouteData "Item" ("/item/" ++ toString x) "item" Nothing
+            RouteData "Item" (Builder.absolute [ "item", String.fromInt x ] []) "item" Nothing
 
         User x ->
-            RouteData "User" ("/user/" ++ x) "user" Nothing
+            RouteData "User" (Builder.absolute [ "user", x ] []) "user" Nothing
 
         NotFound ->
-            RouteData "404" "/404" "404" Nothing
+            RouteData "404" (Builder.absolute [ "404" ] []) "404" Nothing
 
 
 toFeedData : Feed -> Int -> RouteData
 toFeedData feed page =
+    let
+        url path pageNumber =
+            Builder.absolute [ path ] [ Builder.int "page" pageNumber ]
+
+        api path pageNumber =
+            Builder.absolute [ path, String.fromInt pageNumber ++ ".json" ] []
+    in
     case feed of
         Top ->
-            RouteData "Top" ("/top?page=" ++ toString page) ("news.json?page=" ++ toString page) (Just 10)
+            RouteData "Top" (url "top" page) (api "news" page) (Just 10)
 
         New ->
-            RouteData "New" ("/new?page=" ++ toString page) ("newest.json?page=" ++ toString page) (Just 12)
+            RouteData "New" (url "new" page) (api "newest" page) (Just 12)
 
         Ask ->
-            RouteData "Ask" ("/ask?page=" ++ toString page) ("ask.json?page=" ++ toString page) (Just 3)
+            RouteData "Ask" (url "ask" page) (api "ask" page) (Just 3)
 
         Show ->
-            RouteData "Show" ("/show?page=" ++ toString page) ("show.json?page=" ++ toString page) (Just 2)
+            RouteData "Show" (url "show" page) (api "show" page) (Just 2)
 
         Jobs ->
-            RouteData "Jobs" ("/jobs?page=" ++ toString page) ("jobs.json?page=" ++ toString page) Nothing
+            RouteData "Jobs" (url "jobs" page) (api "jobs" page) Nothing

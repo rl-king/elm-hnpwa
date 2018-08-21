@@ -1,35 +1,45 @@
 module Main exposing (..)
 
+import Browser
+import Browser.Navigation as Navigation
 import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (defaultOptions, onClick, onWithOptions)
+import Html.Events exposing (onClick)
 import Http exposing (get, send)
-import Json.Decode as D exposing (..)
-import Json.Decode.Pipeline as P exposing (decode, optional, required)
-import Json.Encode as E exposing (..)
-import Navigation exposing (Location)
+import Json.Decode as Decode
+import Json.Decode.Pipeline as Pipeline
+import Json.Encode as Encode
+import Markdown exposing (defaultOptions)
 import Route exposing (Route)
 import Svg
 import Svg.Attributes as SA
+import Url
+
 
 
 -- MAIN
 
 
-main : Program Never Model Msg
 main =
-    Navigation.program OnNavigation
+    Browser.application
         { init = init
         , view = view
         , update = update
         , subscriptions = \_ -> Sub.none
+        , onUrlRequest = LinkClicked
+        , onUrlChange = UrlChanged
         }
 
 
+
+-- MODEL
+
+
 type alias Model =
-    { route : Route
-    , session : Session
+    { key : Navigation.Key
+    , route : Route
+    , cache : Cache
     , page : Page
     }
 
@@ -43,7 +53,7 @@ type Page
     | NotFound
 
 
-type alias Session =
+type alias Cache =
     { feeds : Dict.Dict String (Result Http.Error (List Item))
     , items : Dict.Dict Int (Result Http.Error Item)
     , users : Dict.Dict String (Result Http.Error User)
@@ -54,12 +64,13 @@ type alias Session =
 --INIT
 
 
-init : Navigation.Location -> ( Model, Cmd Msg )
-init location =
+init : () -> Url.Url -> Navigation.Key -> ( Model, Cmd Msg )
+init _ url key =
     check
-        { route = Route.parse location
+        { key = key
+        , route = Route.parse url
         , page = Loading
-        , session = Session Dict.empty Dict.empty Dict.empty
+        , cache = Cache Dict.empty Dict.empty Dict.empty
         }
 
 
@@ -68,43 +79,46 @@ init location =
 
 
 type Msg
-    = NewUrl Route
-    | OnNavigation Location
+    = LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
     | GotItem Int (Result Http.Error Item)
     | GotUser String (Result Http.Error User)
     | GotFeed String (Result Http.Error (List Item))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ session } as model) =
+update msg ({ cache } as model) =
     case msg of
-        NewUrl url ->
-            ( model, Navigation.newUrl (Route.toUrl url) )
+        LinkClicked (Browser.Internal url) ->
+            ( model, Navigation.pushUrl model.key (Url.toString url) )
 
-        OnNavigation location ->
-            check { model | route = Route.parse location }
+        LinkClicked (Browser.External href) ->
+            ( model, Navigation.load href )
+
+        UrlChanged url ->
+            check { model | route = Route.parse url }
 
         GotItem id item ->
-            check { model | session = { session | items = Dict.insert id item session.items } }
+            check { model | cache = { cache | items = Dict.insert id item cache.items } }
 
         GotUser id user ->
-            check { model | session = { session | users = Dict.insert id user session.users } }
+            check { model | cache = { cache | users = Dict.insert id user cache.users } }
 
         GotFeed id feed ->
-            check { model | session = { session | feeds = Dict.insert id feed session.feeds } }
+            check { model | cache = { cache | feeds = Dict.insert id feed cache.feeds } }
 
 
 
 -- VIEW
 
 
-view : Model -> Html Msg
-view { page, route } =
+view : Model -> Browser.Document Msg
+view model =
     let
         viewPage =
-            case page of
+            case model.page of
                 Feed items ->
-                    viewList route items
+                    viewList model.route items
 
                 Article item ->
                     viewItem item
@@ -121,10 +135,14 @@ view { page, route } =
                 NotFound ->
                     viewNotFound
     in
-    main_ []
-        [ viewHeader route
-        , section [ id "content" ] [ viewPage ]
+    { title = "Elm HNPWA | " ++ Route.toTitle model.route
+    , body =
+        [ main_ []
+            [ viewHeader model.route
+            , section [ id "content" ] [ viewPage ]
+            ]
         ]
+    }
 
 
 
@@ -158,6 +176,7 @@ headerLink : Route -> Route -> Html Msg
 headerLink currentRoute route =
     if Route.toTitle currentRoute == Route.toTitle route then
         span [ attribute "aria-current" "page" ] [ text (Route.toTitle route) ]
+
     else
         link route [ text (Route.toTitle route) ]
 
@@ -177,7 +196,7 @@ viewList route feed =
 viewListItem : Int -> Item -> Html Msg
 viewListItem index item =
     li []
-        [ aside [] [ text (toString (index + 1)) ]
+        [ aside [] [ text (String.fromInt (index + 1)) ]
         , div []
             [ listItemUrl item.id item.url item.title
             , span [ class "domain" ] [ text item.domain ]
@@ -190,6 +209,7 @@ listItemUrl : Int -> String -> String -> Html Msg
 listItemUrl id url title =
     if String.contains "item?id=" url then
         link (Route.Item id) [ text title ]
+
     else
         a [ href url, target "_blank", rel "noopener" ] [ text title ]
 
@@ -202,9 +222,9 @@ viewPagination route =
                 [ previousPageLink route
                 , nav [] (List.map (paginationDesktop route) (List.range 1 total))
                 , div [ class "mobile" ]
-                    [ span [] [ text (toString (Route.toFeedPage route)) ]
+                    [ span [] [ text (String.fromInt (Route.toFeedPage route)) ]
                     , span [] [ text "/" ]
-                    , span [] [ text (toString total) ]
+                    , span [] [ text (String.fromInt total) ]
                     ]
                 , nextPageLink route
                 ]
@@ -215,22 +235,23 @@ viewPagination route =
 
 nextPageLink : Route -> Html Msg
 nextPageLink route =
-    Maybe.map (flip link [ text "Next" ]) (Route.toNext route)
+    Maybe.map (\x -> link x [ text "Next" ]) (Route.toNext route)
         |> Maybe.withDefault (span [ class "inactive" ] [ text "Next" ])
 
 
 previousPageLink : Route -> Html Msg
 previousPageLink route =
-    Maybe.map (flip link [ text "Previous" ]) (Route.toPrevious route)
+    Maybe.map (\x -> link x [ text "Previous" ]) (Route.toPrevious route)
         |> Maybe.withDefault (span [ class "inactive" ] [ text "Previous" ])
 
 
 paginationDesktop : Route -> Int -> Html Msg
 paginationDesktop route page =
     if page == Route.toFeedPage route then
-        span [ attribute "aria-current" "page" ] [ text (toString page) ]
+        span [ attribute "aria-current" "page" ] [ text (String.fromInt page) ]
+
     else
-        link (Route.mapFeedPage (\_ -> page) route) [ text (toString page) ]
+        link (Route.mapFeedPage (\_ -> page) route) [ text (String.fromInt page) ]
 
 
 
@@ -245,7 +266,7 @@ viewItem item =
             , span [ class "domain" ] [ text item.domain ]
             , itemFooter item
             ]
-        , rawHtml div item.content
+        , rawHtml item.content
         , section [ class "comments-view" ]
             [ viewComments (getComments item.comments)
             ]
@@ -256,6 +277,7 @@ itemUrl : Int -> String -> String -> Html Msg
 itemUrl id url title =
     if String.contains "item?id=" url then
         h2 [] [ text title ]
+
     else
         a [ href url, target "_blank", rel "noopener" ] [ h2 [] [ text title ] ]
 
@@ -264,12 +286,13 @@ itemFooter : Item -> Html Msg
 itemFooter item =
     if item.type_ == "job" then
         footer [] [ text item.timeAgo ]
+
     else
         footer []
-            [ text (toString item.points ++ " points by ")
+            [ text (String.fromInt item.points ++ " points by ")
             , link (Route.User item.user) [ text item.user ]
             , text (" " ++ item.timeAgo ++ " | ")
-            , link (Route.Item item.id) [ text (toString item.commentsCount ++ " comments") ]
+            , link (Route.Item item.id) [ text (String.fromInt item.commentsCount ++ " comments") ]
             ]
 
 
@@ -289,7 +312,7 @@ commentView item =
             [ link (Route.User item.user) [ text item.user ]
             , text (" " ++ item.timeAgo)
             ]
-        , rawHtml div item.content
+        , rawHtml item.content
         , viewComments (getComments item.comments)
         ]
 
@@ -318,7 +341,7 @@ viewUser user =
         [ table []
             [ viewRow "user:" user.id
             , viewRow "created:" user.created
-            , viewRow "karma:" (toString user.karma)
+            , viewRow "karma:" (String.fromInt user.karma)
             , viewRow "about:" user.about
             ]
         ]
@@ -364,7 +387,7 @@ viewError error =
                 "NetworkError | You seem to be offline"
 
             Http.BadStatus { status } ->
-                "BadStatus | The server gave me a " ++ toString status.code ++ " error"
+                "BadStatus | The server gave me a " ++ String.fromInt status.code ++ " error"
 
             Http.BadPayload _ _ ->
                 "BadPayload | The server gave me back something I did not expect"
@@ -377,9 +400,9 @@ viewError error =
 --VIEW HELPERS
 
 
-rawHtml : (List (Attribute Msg) -> List (Html Msg) -> Html Msg) -> String -> Html Msg
-rawHtml node htmlString =
-    node [ property "innerHTML" (E.string htmlString) ] []
+rawHtml : String -> Html Msg
+rawHtml =
+    Markdown.toHtmlWith { defaultOptions | sanitize = False } []
 
 
 
@@ -388,30 +411,7 @@ rawHtml node htmlString =
 
 link : Route -> List (Html Msg) -> Html Msg
 link route kids =
-    a [ href (Route.toUrl route), onPreventDefaultClick (NewUrl route) ] kids
-
-
-onPreventDefaultClick : Msg -> Attribute Msg
-onPreventDefaultClick msg =
-    onWithOptions "click"
-        { defaultOptions | preventDefault = True }
-        (D.andThen (eventDecoder msg) eventKeyDecoder)
-
-
-eventKeyDecoder : Decoder Bool
-eventKeyDecoder =
-    D.map2
-        (not >> xor)
-        (D.field "ctrlKey" D.bool)
-        (D.field "metaKey" D.bool)
-
-
-eventDecoder : msg -> Bool -> Decoder msg
-eventDecoder msg preventDefault =
-    if preventDefault then
-        D.succeed msg
-    else
-        D.fail ""
+    a [ href (Route.toUrl route) ] kids
 
 
 
@@ -424,8 +424,8 @@ type Load result cmd
 
 
 check : Model -> ( Model, Cmd Msg )
-check ({ route, session } as model) =
-    case checkHelper route session of
+check ({ route, cache } as model) =
+    case checkHelper route cache of
         Show (Ok page) ->
             ( { model | page = page }, Cmd.none )
 
@@ -436,19 +436,19 @@ check ({ route, session } as model) =
             ( { model | page = Loading }, cmd )
 
 
-checkHelper : Route -> Session -> Load (Result Http.Error Page) (Cmd Msg)
-checkHelper route session =
+checkHelper : Route -> Cache -> Load (Result Http.Error Page) (Cmd Msg)
+checkHelper route cache =
     case route of
         Route.Feeds _ _ ->
-            Maybe.map (Show << Result.map Feed) (Dict.get (Route.toApi route) session.feeds)
+            Maybe.map (Show << Result.map Feed) (Dict.get (Route.toApi route) cache.feeds)
                 |> Maybe.withDefault (Get (requestFeed route))
 
         Route.Item id ->
-            Maybe.map (Show << Result.map Article) (Dict.get id session.items)
+            Maybe.map (Show << Result.map Article) (Dict.get id cache.items)
                 |> Maybe.withDefault (Get (requestItem id))
 
         Route.User id ->
-            Maybe.map (Show << Result.map Profile) (Dict.get id session.users)
+            Maybe.map (Show << Result.map Profile) (Dict.get id cache.users)
                 |> Maybe.withDefault (Get (requestUser id))
 
         _ ->
@@ -461,18 +461,18 @@ checkHelper route session =
 
 endpoint : String
 endpoint =
-    "https://hnpwa.com/api/v0/"
+    "https://api.hnpwa.com/v0"
 
 
 requestItem : Int -> Cmd Msg
 requestItem id =
-    Http.get (endpoint ++ "item/" ++ toString id ++ ".json") decodeItem
+    Http.get (endpoint ++ "/item/" ++ String.fromInt id ++ ".json") decodeItem
         |> Http.send (GotItem id)
 
 
 requestUser : String -> Cmd Msg
 requestUser id =
-    Http.get (endpoint ++ "user/" ++ id ++ ".json") decodeUser
+    Http.get (endpoint ++ "/user/" ++ id ++ ".json") decodeUser
         |> Http.send (GotUser id)
 
 
@@ -514,39 +514,39 @@ type Comments
     | Empty
 
 
-decodeFeed : D.Decoder (List Item)
+decodeFeed : Decode.Decoder (List Item)
 decodeFeed =
-    D.list decodeItem
+    Decode.list decodeItem
 
 
-decodeItem : D.Decoder Item
+decodeItem : Decode.Decoder Item
 decodeItem =
-    P.decode Item
-        |> P.required "id" D.int
-        |> P.optional "title" D.string "No title"
-        |> P.optional "points" D.int 0
-        |> P.optional "user" D.string ""
-        |> P.required "time_ago" D.string
-        |> P.optional "url" D.string ""
-        |> P.optional "domain" D.string ""
-        |> P.required "comments_count" D.int
-        |> P.optional "comments" (D.lazy (\_ -> decodeComments)) Empty
-        |> P.optional "content" D.string ""
-        |> P.required "type" D.string
+    Decode.succeed Item
+        |> Pipeline.required "id" Decode.int
+        |> Pipeline.optional "title" Decode.string "No title"
+        |> Pipeline.optional "points" Decode.int 0
+        |> Pipeline.optional "user" Decode.string ""
+        |> Pipeline.required "time_ago" Decode.string
+        |> Pipeline.optional "url" Decode.string ""
+        |> Pipeline.optional "domain" Decode.string ""
+        |> Pipeline.required "comments_count" Decode.int
+        |> Pipeline.optional "comments" (Decode.lazy (\_ -> decodeComments)) Empty
+        |> Pipeline.optional "content" Decode.string ""
+        |> Pipeline.required "type" Decode.string
 
 
-decodeUser : D.Decoder User
+decodeUser : Decode.Decoder User
 decodeUser =
-    P.decode User
-        |> P.optional "title" D.string ""
-        |> P.required "created" D.string
-        |> P.required "id" D.string
-        |> P.required "karma" D.int
+    Decode.succeed User
+        |> Pipeline.optional "title" Decode.string ""
+        |> Pipeline.required "created" Decode.string
+        |> Pipeline.required "id" Decode.string
+        |> Pipeline.required "karma" Decode.int
 
 
-decodeComments : Decoder Comments
+decodeComments : Decode.Decoder Comments
 decodeComments =
-    D.map Comments (D.list (D.lazy (\_ -> decodeItem)))
+    Decode.map Comments (Decode.list (Decode.lazy (\_ -> decodeItem)))
 
 
 

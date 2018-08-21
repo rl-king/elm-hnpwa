@@ -4,7 +4,7 @@
 <head>
     <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
     <title>Elm HNPWA</title>
-    <meta name="description" content="Elm 0.18 Hacker News PWA / Sample SPA">
+    <meta name="description" content="Elm 0.19 Hacker News PWA / Sample SPA">
 
     <link rel="icon" href="/favicon.ico">
 
@@ -25,15 +25,22 @@
     <link rel="apple-touch-icon" sizes="144x144" href="/icon-144x144.png">
     <link rel="apple-touch-icon" sizes="192x192" href="/icon-192x192.png">
 
+    <link rel="stylesheet" href="/style.css">
+    <script src="/main.js"></script>
 </head>
 
 <body>
     <noscript>
         <h2>I need to execute some JS to work 😞</h2>
     </noscript>
+
     <div class="notification">
         <div class="spinner"></div>
     </div>
+
+    <script>
+        var app = Elm.Main.init(null);
+    </script>
 </body>
 
 </html>
