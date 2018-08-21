@@ -13,9 +13,9 @@ A [HNPWA](https://hnpwa.com) implementation written in [Elm 0.19](http://elm-lan
 </p>
 
 ## Perfomance
-- Lighthouse: 91/100
-- Interactive (Emerging Markets): 4.3s
-- Interactive (Faster 3G): 3.5s
+- Lighthouse: 100/100
+- Interactive (Emerging Markets): 3.4s
+- Interactive (Faster 3G): 2.5s
 
 ## Features
 - Completely written in Elm 0.19
@@ -26,8 +26,9 @@ A [HNPWA](https://hnpwa.com) implementation written in [Elm 0.19](http://elm-lan
 Install Elm, Elm-format and other dependencies
 ```
 make deps
+brew install entr (if you want compile on save to work)
 ```
-Compile on file change and start dev server 
+Compile on file change and start dev server
 ```
 make watch
 make serve
