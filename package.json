@@ -9,9 +9,8 @@
         "url": "https://gitub.com/rl-king/elm-hnpwa"
     },
     "devDependencies": {
-        "clean-css-cli": "^4.1.11",
-        "elm": "0.18.x",
-        "elm-format": "0.7.0-exp",
+        "elm": "0.19.x",
+        "elm-format": "0.8.0-rc3",
         "livereload": "0.7.x",
         "node-sass": "^4.5.1",
         "serve": "^9.1.0",
