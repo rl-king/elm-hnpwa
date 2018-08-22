@@ -49,7 +49,7 @@
         "headers": [
           {
             "key": "Link",
-            "value": "<https://hnpwa.com>;rel=preconnect;crossorigin"
+            "value": "<https://api.hnpwa.com>;rel=preconnect;crossorigin"
           }
         ]
       }
