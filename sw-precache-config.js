@@ -9,7 +9,7 @@ module.exports = {
     staticFileGlobsIgnorePatterns: [/manifest\.json$/],
     runtimeCaching: [
         {
-            urlPattern: new RegExp(`${endpoint}/(news|newest|ask|show|jobs).json`),
+            urlPattern: new RegExp(`${endpoint}/(news|newest|ask|show|jobs)`),
             handler: "networkFirst",
             options: {cache: {maxEntries: 30, name: "feed-cache"}}
         },

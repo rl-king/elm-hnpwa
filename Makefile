@@ -30,10 +30,10 @@ distclean: clean
 		@rm -Rf node_modules
 
 elm:
-		@./elm make ${SRC_DIR}/Main.elm --output ${DIST_DIR}/main.js
+		@elm make --debug ${SRC_DIR}/Main.elm --output ${DIST_DIR}/main.js
 
 elmoptimized:
-		@./elm make --optimize ${SRC_DIR}/Main.elm --output ${DIST_DIR}/main.js
+		@elm make --optimize ${SRC_DIR}/Main.elm --output ${DIST_DIR}/main.js
 
 help:
 		@echo "Run: make <target> where <target> is one of the following:"
