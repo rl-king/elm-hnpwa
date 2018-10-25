@@ -1,4 +1,4 @@
-module Main exposing (..)
+module Main exposing (main)
 
 import Browser
 import Browser.Navigation as Navigation
@@ -21,6 +21,7 @@ import Url
 -- MAIN
 
 
+main : Program () Model Msg
 main =
     Browser.application
         { init = init
@@ -115,27 +116,35 @@ update msg ({ cache } as model) =
 view : Model -> Browser.Document Msg
 view model =
     let
-        viewPage =
+        ( viewPage, pageTitle ) =
             case model.page of
                 Feed items ->
-                    viewList model.route items
+                    ( viewList model.route items
+                    , Route.toTitle model.route
+                    )
 
                 Article item ->
-                    viewItem item
+                    ( viewItem item, item.title )
 
                 Profile user ->
-                    viewUser user
+                    ( viewUser user, user.id )
 
                 Loading ->
-                    viewLoading
+                    ( viewLoading
+                    , Route.toTitle model.route
+                    )
 
                 Error error ->
-                    viewError error
+                    ( viewError error
+                    , Route.toTitle model.route
+                    )
 
                 NotFound ->
-                    viewNotFound
+                    ( viewNotFound
+                    , Route.toTitle model.route
+                    )
     in
-    { title = "Elm HNPWA | " ++ Route.toTitle model.route
+    { title = pageTitle ++ " | Elm HNPWA"
     , body =
         [ main_ []
             [ viewHeader model.route

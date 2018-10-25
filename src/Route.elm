@@ -1,4 +1,17 @@
-module Route exposing (..)
+module Route exposing
+    ( Feed(..)
+    , Route(..)
+    , mapFeedPage
+    , parse
+    , toApi
+    , toFeedData
+    , toFeedPage
+    , toNext
+    , toPagination
+    , toPrevious
+    , toTitle
+    , toUrl
+    )
 
 import Url
 import Url.Builder as Builder
