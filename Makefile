@@ -23,7 +23,6 @@ clean:
 
 deps:
 		@npm install
-		@elm-package install --yes
 
 distclean: clean
 		@rm -Rf elm-stuff
