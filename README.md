@@ -37,3 +37,7 @@ Build, compile optimized Elm, generate Service Worker and minify assets
 ```
 make build
 ```
+
+## License
+
+[MIT](LICENSE)
