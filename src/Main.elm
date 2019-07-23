@@ -6,7 +6,7 @@ import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
-import Http exposing (get, send)
+import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline as Pipeline
 import Json.Encode as Encode
@@ -15,6 +15,7 @@ import Route exposing (Route)
 import Svg
 import Svg.Attributes as SA
 import Url
+import Url.Builder as Url
 
 
 
@@ -395,10 +396,10 @@ viewError error =
             Http.NetworkError ->
                 "NetworkError | You seem to be offline"
 
-            Http.BadStatus { status } ->
-                "BadStatus | The server gave me a " ++ String.fromInt status.code ++ " error"
+            Http.BadStatus status ->
+                "BadStatus | The server gave me a " ++ String.fromInt status ++ " error"
 
-            Http.BadPayload _ _ ->
+            Http.BadBody _ ->
                 "BadPayload | The server gave me back something I did not expect"
 
             Http.BadUrl _ ->
@@ -468,27 +469,33 @@ checkHelper route cache =
 -- HTTP
 
 
-endpoint : String
-endpoint =
-    "https://api.hnpwa.com/v0"
+endpoint : List String -> String
+endpoint segments =
+    Url.crossOrigin "https://api.hnpwa.com" segments []
 
 
 requestItem : Int -> Cmd Msg
 requestItem id =
-    Http.get (endpoint ++ "/item/" ++ String.fromInt id ++ ".json") decodeItem
-        |> Http.send (GotItem id)
+    Http.get
+        { url = endpoint [ "v0", "item", String.fromInt id ++ ".json" ]
+        , expect = Http.expectJson (GotItem id) decodeItem
+        }
 
 
 requestUser : String -> Cmd Msg
 requestUser id =
-    Http.get (endpoint ++ "/user/" ++ id ++ ".json") decodeUser
-        |> Http.send (GotUser id)
+    Http.get
+        { url = endpoint [ "v0", "user", id ++ ".json" ]
+        , expect = Http.expectJson (GotUser id) decodeUser
+        }
 
 
 requestFeed : Route -> Cmd Msg
 requestFeed route =
-    Http.get (endpoint ++ Route.toApi route) decodeFeed
-        |> Http.send (GotFeed (Route.toApi route))
+    Http.get
+        { url = endpoint [ "v0", Route.toApi route ]
+        , expect = Http.expectJson (GotFeed (Route.toApi route)) decodeFeed
+        }
 
 
 
