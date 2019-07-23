@@ -2,7 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Browser.Navigation as Navigation
-import Dict
+import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -56,9 +56,9 @@ type Page
 
 
 type alias Cache =
-    { feeds : Dict.Dict String (Result Http.Error (List Item))
-    , items : Dict.Dict Int (Result Http.Error Item)
-    , users : Dict.Dict String (Result Http.Error User)
+    { feeds : Dict String (Result Http.Error (List Item))
+    , items : Dict Int (Result Http.Error Item)
+    , users : Dict String (Result Http.Error User)
     }
 
 
