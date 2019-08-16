@@ -163,8 +163,8 @@ toFeedData feed page =
         url path pageNumber =
             Builder.absolute [ path ] [ Builder.int "page" pageNumber ]
 
-        api path pageNumber =
-            Builder.absolute [ path, String.fromInt pageNumber ++ ".json" ] []
+       api path pageNumber =
+            Builder.relative [ "v0", path, String.fromInt pageNumber ++ ".json" ] []
     in
     case feed of
         Top ->

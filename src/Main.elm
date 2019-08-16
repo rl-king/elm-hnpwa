@@ -493,7 +493,7 @@ requestUser id =
 requestFeed : Route -> Cmd Msg
 requestFeed route =
     Http.get
-        { url = endpoint [ "v0", Route.toApi route ]
+        { url = endpoint [ Route.toApi route ]
         , expect = Http.expectJson (GotFeed (Route.toApi route)) decodeFeed
         }
 
