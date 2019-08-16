@@ -163,15 +163,9 @@ viewHeader : Route -> Html Msg
 viewHeader route =
     header []
         [ link Route.Root [ i [ attribute "aria-label" "Homepage", class "logo" ] [ logo ] ]
-        , nav []
-            (List.map (headerLink route)
-                [ Route.Feeds Route.Top Nothing
-                , Route.Feeds Route.New Nothing
-                , Route.Feeds Route.Ask Nothing
-                , Route.Feeds Route.Show Nothing
-                , Route.Feeds Route.Jobs Nothing
-                ]
-            )
+        , nav [] <|
+            List.map (headerLink route)
+                [ Route.Top, Route.New, Route.Ask, Route.Show, Route.Jobs ]
         , a
             [ class "githublink"
             , href "https://github.com/rl-king/elm-hnpwa"
@@ -182,13 +176,17 @@ viewHeader route =
         ]
 
 
-headerLink : Route -> Route -> Html Msg
-headerLink currentRoute route =
-    if Route.toTitle currentRoute == Route.toTitle route then
-        span [ attribute "aria-current" "page" ] [ text (Route.toTitle route) ]
+headerLink : Route -> Route.Feed -> Html Msg
+headerLink currentRoute feed =
+    let
+        feedRoute =
+            Route.Feeds feed Nothing
+    in
+    if currentRoute == feedRoute then
+        span [ attribute "aria-current" "page" ] [ text (Route.toTitle feedRoute) ]
 
     else
-        link route [ text (Route.toTitle route) ]
+        link feedRoute [ text (Route.toTitle feedRoute) ]
 
 
 
