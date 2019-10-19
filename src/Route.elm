@@ -3,11 +3,9 @@ module Route exposing
     , Route(..)
     , fromUrl
     , mapFeedPage
-    , toApi
-    , toFeedData
     , toFeedPage
+    , toMaxPages
     , toNext
-    , toPagination
     , toPrevious
     , toTitle
     , toUrl
@@ -30,7 +28,7 @@ import Url.Parser.Query as Query
 
 type Route
     = Root
-    | Feeds Feed (Maybe Int)
+    | Feeds Feed Int
     | Item Int
     | User String
     | NotFound
@@ -47,8 +45,7 @@ type Feed
 type alias RouteData =
     { title : String
     , url : String
-    , api : String
-    , pagination : Maybe Int
+    , maxPages : Maybe Int
     }
 
 
@@ -61,7 +58,7 @@ fromUrl =
     let
         parser =
             Parser.oneOf
-                [ Parser.map (Feeds Top (Just 1)) Parser.top
+                [ Parser.map (Feeds Top 1) Parser.top
                 , feedParser Top "top"
                 , feedParser New "new"
                 , feedParser Ask "ask"
@@ -72,7 +69,11 @@ fromUrl =
                 ]
 
         feedParser route path =
-            Parser.map (Feeds route) (Parser.s path <?> Query.int "page")
+            Parser.map (Feeds route << fallbackPage) <|
+                (Parser.s path <?> Query.int "page")
+
+        fallbackPage =
+            Maybe.withDefault 1
     in
     Parser.parse parser
         >> Maybe.withDefault NotFound
@@ -88,24 +89,16 @@ toUrl =
     toRouteData >> .url
 
 
-toApi : Route -> String
-toApi =
-    toRouteData >> .api
-
-
-toPagination : Route -> Maybe Int
-toPagination =
-    toRouteData >> .pagination
+toMaxPages : Route -> Maybe Int
+toMaxPages =
+    toRouteData >> .maxPages
 
 
 toFeedPage : Route -> Int
 toFeedPage route =
     case route of
-        Feeds _ (Just page) ->
+        Feeds _ page ->
             page
-
-        Feeds _ Nothing ->
-            1
 
         _ ->
             0
@@ -115,7 +108,7 @@ mapFeedPage : (Int -> Int) -> Route -> Route
 mapFeedPage fn route =
     case route of
         Feeds feed page ->
-            Feeds feed (Maybe.map fn page)
+            Feeds feed (fn page)
 
         _ ->
             route
@@ -123,8 +116,8 @@ mapFeedPage fn route =
 
 toNext : Route -> Maybe Route
 toNext route =
-    case ( toPagination route, route ) of
-        ( Just max, Feeds feed (Just page) ) ->
+    case ( toMaxPages route, route ) of
+        ( Just max, Feeds feed page ) ->
             if page < max then
                 Just (mapFeedPage ((+) 1) route)
 
@@ -138,7 +131,7 @@ toNext route =
 toPrevious : Route -> Maybe Route
 toPrevious route =
     case route of
-        Feeds feed (Just page) ->
+        Feeds feed page ->
             if page > 1 then
                 Just (mapFeedPage (\x -> x - 1) route)
 
@@ -151,44 +144,35 @@ toPrevious route =
 
 toRouteData : Route -> RouteData
 toRouteData route =
+    let
+        url path page =
+            Builder.absolute [ path ]
+                [ Builder.int "page" page ]
+    in
     case route of
         Root ->
-            RouteData "Top" (Builder.absolute [] []) "news.json" Nothing
+            RouteData "Top" (Builder.absolute [] []) Nothing
 
-        Feeds feed param ->
-            Maybe.withDefault (toFeedData feed 1) (Maybe.map (toFeedData feed) param)
+        Feeds Top page ->
+            RouteData "Top" (url "top" page) (Just 10)
+
+        Feeds New page ->
+            RouteData "New" (url "new" page) (Just 12)
+
+        Feeds Ask page ->
+            RouteData "Ask" (url "ask" page) (Just 3)
+
+        Feeds Show page ->
+            RouteData "Show" (url "show" page) (Just 2)
+
+        Feeds Jobs page ->
+            RouteData "Jobs" (url "jobs" page) Nothing
 
         Item x ->
-            RouteData "Item" (Builder.absolute [ "item", String.fromInt x ] []) "item" Nothing
+            RouteData "Item" (Builder.absolute [ "item", String.fromInt x ] []) Nothing
 
         User x ->
-            RouteData "User" (Builder.absolute [ "user", x ] []) "user" Nothing
+            RouteData "User" (Builder.absolute [ "user", x ] []) Nothing
 
         NotFound ->
-            RouteData "404" (Builder.absolute [ "404" ] []) "404" Nothing
-
-
-toFeedData : Feed -> Int -> RouteData
-toFeedData feed page =
-    let
-        url path pageNumber =
-            Builder.absolute [ path ] [ Builder.int "page" pageNumber ]
-
-        api path pageNumber =
-            Builder.relative [ "v0", path, String.fromInt pageNumber ++ ".json" ] []
-    in
-    case feed of
-        Top ->
-            RouteData "Top" (url "top" page) (api "news" page) (Just 10)
-
-        New ->
-            RouteData "New" (url "new" page) (api "newest" page) (Just 12)
-
-        Ask ->
-            RouteData "Ask" (url "ask" page) (api "ask" page) (Just 3)
-
-        Show ->
-            RouteData "Show" (url "show" page) (api "show" page) (Just 2)
-
-        Jobs ->
-            RouteData "Jobs" (url "jobs" page) (api "jobs" page) Nothing
+            RouteData "404" (Builder.absolute [ "404" ] []) Nothing

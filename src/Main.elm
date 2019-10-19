@@ -70,7 +70,7 @@ init : () -> Url.Url -> Navigation.Key -> ( Model, Cmd Msg )
 init _ url key =
     check
         { key = key
-        , route = Route.parse url
+        , route = Route.fromUrl url
         , page = Loading
         , cache = Cache Dict.empty Dict.empty Dict.empty
         }
@@ -98,7 +98,7 @@ update msg ({ cache } as model) =
             ( model, Navigation.load href )
 
         UrlChanged url ->
-            check { model | route = Route.parse url }
+            check { model | route = Route.fromUrl url }
 
         GotItem id item ->
             check { model | cache = { cache | items = Dict.insert id item cache.items } }
@@ -180,7 +180,7 @@ headerLink : Route -> Route.Feed -> Html Msg
 headerLink currentRoute feed =
     let
         feedRoute =
-            Route.Feeds feed Nothing
+            Route.Feeds feed 1
     in
     if currentRoute == feedRoute then
         span [ attribute "aria-current" "page" ] [ text (Route.toTitle feedRoute) ]
@@ -224,7 +224,7 @@ listItemUrl id url title =
 
 viewPagination : Route -> Html Msg
 viewPagination route =
-    case Route.toPagination route of
+    case Route.toMaxPages route of
         Just total ->
             section [ class "pagination" ]
                 [ previousPageLink route
@@ -427,40 +427,41 @@ link route kids =
 
 
 type Load result cmd
-    = Show result
-    | Get cmd
+    = View result
+    | Request cmd
 
 
 check : Model -> ( Model, Cmd Msg )
 check ({ route, cache } as model) =
     case checkHelper route cache of
-        Show (Ok page) ->
+        View (Ok page) ->
             ( { model | page = page }, Cmd.none )
 
-        Show (Err err) ->
+        View (Err err) ->
             ( { model | page = Error err }, Cmd.none )
 
-        Get cmd ->
+        Request cmd ->
             ( { model | page = Loading }, cmd )
 
 
 checkHelper : Route -> Cache -> Load (Result Http.Error Page) (Cmd Msg)
 checkHelper route cache =
     case route of
-        Route.Feeds _ _ ->
-            Maybe.map (Show << Result.map Feed) (Dict.get (Route.toApi route) cache.feeds)
-                |> Maybe.withDefault (Get (requestFeed route))
+        Route.Feeds feed page ->
+            Dict.get (endpoint (feedPathSegments feed page)) cache.feeds
+                |> Maybe.map (View << Result.map Feed)
+                |> Maybe.withDefault (Request (requestFeed feed page))
 
         Route.Item id ->
-            Maybe.map (Show << Result.map Article) (Dict.get id cache.items)
-                |> Maybe.withDefault (Get (requestItem id))
+            Maybe.map (View << Result.map Article) (Dict.get id cache.items)
+                |> Maybe.withDefault (Request (requestItem id))
 
         Route.User id ->
-            Maybe.map (Show << Result.map Profile) (Dict.get id cache.users)
-                |> Maybe.withDefault (Get (requestUser id))
+            Maybe.map (View << Result.map Profile) (Dict.get id cache.users)
+                |> Maybe.withDefault (Request (requestUser id))
 
         _ ->
-            Show (Ok NotFound)
+            View (Ok NotFound)
 
 
 
@@ -488,12 +489,39 @@ requestUser id =
         }
 
 
-requestFeed : Route -> Cmd Msg
-requestFeed route =
+requestFeed : Route.Feed -> Int -> Cmd Msg
+requestFeed feed page =
+    let
+        url =
+            endpoint (feedPathSegments feed page)
+    in
     Http.get
-        { url = endpoint [ Route.toApi route ]
-        , expect = Http.expectJson (GotFeed (Route.toApi route)) decodeFeed
+        { url = url
+        , expect = Http.expectJson (GotFeed url) decodeFeed
         }
+
+
+feedPathSegments : Route.Feed -> Int -> List String
+feedPathSegments feed page =
+    let
+        toSegements path =
+            [ "v0", path, String.fromInt page ++ ".json" ]
+    in
+    case feed of
+        Route.Top ->
+            toSegements "news"
+
+        Route.New ->
+            toSegements "newest"
+
+        Route.Ask ->
+            toSegements "ask"
+
+        Route.Show ->
+            toSegements "show"
+
+        Route.Jobs ->
+            toSegements "jobs"
 
 
 
