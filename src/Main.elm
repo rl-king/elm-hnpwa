@@ -47,7 +47,7 @@ type alias Model =
 
 
 type Page
-    = Feed (List Item)
+    = Feed Route.Feed Int (List Item)
     | Article Item
     | Profile User
     | Loading
@@ -70,7 +70,7 @@ init : () -> Url.Url -> Navigation.Key -> ( Model, Cmd Msg )
 init _ url key =
     check
         { key = key
-        , route = Route.parse url
+        , route = Route.fromUrl url
         , page = Loading
         , cache = Cache Dict.empty Dict.empty Dict.empty
         }
@@ -98,7 +98,7 @@ update msg ({ cache } as model) =
             ( model, Navigation.load href )
 
         UrlChanged url ->
-            check { model | route = Route.parse url }
+            check { model | route = Route.fromUrl url }
 
         GotItem id item ->
             check { model | cache = { cache | items = Dict.insert id item cache.items } }
@@ -117,42 +117,39 @@ update msg ({ cache } as model) =
 view : Model -> Browser.Document Msg
 view model =
     let
-        ( viewPage, pageTitle ) =
-            case model.page of
-                Feed items ->
-                    ( viewList model.route items
-                    , Route.toTitle model.route
-                    )
-
-                Article item ->
-                    ( viewItem item, item.title )
-
-                Profile user ->
-                    ( viewUser user, user.id )
-
-                Loading ->
-                    ( viewLoading
-                    , Route.toTitle model.route
-                    )
-
-                Error error ->
-                    ( viewError error
-                    , Route.toTitle model.route
-                    )
-
-                NotFound ->
-                    ( viewNotFound
-                    , Route.toTitle model.route
-                    )
+        ( page, title ) =
+            viewPage model
     in
-    { title = pageTitle ++ " | Elm HNPWA"
+    { title = title ++ " | Elm HNPWA"
     , body =
         [ main_ []
             [ viewHeader model.route
-            , section [ id "content" ] [ viewPage ]
+            , section [ id "content" ] [ page ]
             ]
         ]
     }
+
+
+viewPage : Model -> ( Html Msg, String )
+viewPage model =
+    case model.page of
+        Feed feed page items ->
+            ( viewList feed page items, Route.toTitle model.route )
+
+        Article item ->
+            ( viewItem item, item.title )
+
+        Profile user ->
+            ( viewUser user, user.id )
+
+        Loading ->
+            ( viewLoading, Route.toTitle model.route )
+
+        Error error ->
+            ( viewError error, Route.toTitle model.route )
+
+        NotFound ->
+            ( viewNotFound, Route.toTitle model.route )
 
 
 
@@ -177,12 +174,20 @@ viewHeader route =
 
 
 headerLink : Route -> Route.Feed -> Html Msg
-headerLink currentRoute feed =
+headerLink route feed =
     let
+        highlightCurrent =
+            case route of
+                Route.Feeds currentFeed _ ->
+                    feed == currentFeed
+
+                _ ->
+                    False
+
         feedRoute =
-            Route.Feeds feed Nothing
+            Route.Feeds feed 1
     in
-    if currentRoute == feedRoute then
+    if highlightCurrent then
         span [ attribute "aria-current" "page" ] [ text (Route.toTitle feedRoute) ]
 
     else
@@ -193,11 +198,11 @@ headerLink currentRoute feed =
 -- LIST VIEW
 
 
-viewList : Route -> List Item -> Html Msg
-viewList route feed =
+viewList : Route.Feed -> Int -> List Item -> Html Msg
+viewList feed page items =
     section [ class "list-view" ]
-        [ ul [] (List.indexedMap viewListItem feed)
-        , viewPagination route
+        [ ul [] (List.indexedMap viewListItem items)
+        , viewPagination feed page
         ]
 
 
@@ -222,44 +227,53 @@ listItemUrl id url title =
         a [ href url, target "_blank", rel "noopener" ] [ text title ]
 
 
-viewPagination : Route -> Html Msg
-viewPagination route =
-    case Route.toPagination route of
-        Just total ->
-            section [ class "pagination" ]
-                [ previousPageLink route
-                , nav [] (List.map (paginationDesktop route) (List.range 1 total))
-                , div [ class "mobile" ]
-                    [ span [] [ text (String.fromInt (Route.toFeedPage route)) ]
-                    , span [] [ text "/" ]
-                    , span [] [ text (String.fromInt total) ]
-                    ]
-                , nextPageLink route
-                ]
 
-        Nothing ->
-            text ""
+-- PAGINATION
 
 
-nextPageLink : Route -> Html Msg
-nextPageLink route =
-    Maybe.map (\x -> link x [ text "Next" ]) (Route.toNext route)
-        |> Maybe.withDefault (span [ class "inactive" ] [ text "Next" ])
+viewPagination : Route.Feed -> Int -> Html Msg
+viewPagination feed page =
+    let
+        maxPages =
+            Route.maxPages feed
+    in
+    section [ class "pagination" ]
+        [ previousPageLink feed page
+        , nav [] (List.map (paginationDesktop feed page) (List.range 1 maxPages))
+        , div [ class "mobile" ]
+            [ span [] [ text (String.fromInt page) ]
+            , span [] [ text "/" ]
+            , span [] [ text (String.fromInt maxPages) ]
+            ]
+        , nextPageLink feed page
+        ]
 
 
-previousPageLink : Route -> Html Msg
-previousPageLink route =
-    Maybe.map (\x -> link x [ text "Previous" ]) (Route.toPrevious route)
-        |> Maybe.withDefault (span [ class "inactive" ] [ text "Previous" ])
+nextPageLink : Route.Feed -> Int -> Html Msg
+nextPageLink feed page =
+    if page == Route.maxPages feed then
+        span [ class "inactive" ] [ text "Next" ]
+
+    else
+        link (Route.Feeds feed (page + 1)) [ text "Next" ]
 
 
-paginationDesktop : Route -> Int -> Html Msg
-paginationDesktop route page =
-    if page == Route.toFeedPage route then
+previousPageLink : Route.Feed -> Int -> Html Msg
+previousPageLink feed page =
+    if page == 1 then
+        span [ class "inactive" ] [ text "Previous" ]
+
+    else
+        link (Route.Feeds feed (page - 1)) [ text "Previous" ]
+
+
+paginationDesktop : Route.Feed -> Int -> Int -> Html Msg
+paginationDesktop feed currentPage page =
+    if page == currentPage then
         span [ attribute "aria-current" "page" ] [ text (String.fromInt page) ]
 
     else
-        link (Route.mapFeedPage (\_ -> page) route) [ text (String.fromInt page) ]
+        link (Route.Feeds feed page) [ text (String.fromInt page) ]
 
 
 
@@ -300,7 +314,8 @@ itemFooter item =
             [ text (String.fromInt item.points ++ " points by ")
             , link (Route.User item.user) [ text item.user ]
             , text (" " ++ item.timeAgo ++ " | ")
-            , link (Route.Item item.id) [ text (String.fromInt item.commentsCount ++ " comments") ]
+            , link (Route.Item item.id)
+                [ text (String.fromInt item.commentsCount ++ " comments") ]
             ]
 
 
@@ -427,40 +442,41 @@ link route kids =
 
 
 type Load result cmd
-    = Show result
-    | Get cmd
+    = View result
+    | Request cmd
 
 
 check : Model -> ( Model, Cmd Msg )
 check ({ route, cache } as model) =
     case checkHelper route cache of
-        Show (Ok page) ->
+        View (Ok page) ->
             ( { model | page = page }, Cmd.none )
 
-        Show (Err err) ->
+        View (Err err) ->
             ( { model | page = Error err }, Cmd.none )
 
-        Get cmd ->
+        Request cmd ->
             ( { model | page = Loading }, cmd )
 
 
 checkHelper : Route -> Cache -> Load (Result Http.Error Page) (Cmd Msg)
 checkHelper route cache =
     case route of
-        Route.Feeds _ _ ->
-            Maybe.map (Show << Result.map Feed) (Dict.get (Route.toApi route) cache.feeds)
-                |> Maybe.withDefault (Get (requestFeed route))
+        Route.Feeds feed page ->
+            Dict.get (endpoint (feedPathSegments feed page)) cache.feeds
+                |> Maybe.map (View << Result.map (Feed feed page))
+                |> Maybe.withDefault (Request (requestFeed feed page))
 
         Route.Item id ->
-            Maybe.map (Show << Result.map Article) (Dict.get id cache.items)
-                |> Maybe.withDefault (Get (requestItem id))
+            Maybe.map (View << Result.map Article) (Dict.get id cache.items)
+                |> Maybe.withDefault (Request (requestItem id))
 
         Route.User id ->
-            Maybe.map (Show << Result.map Profile) (Dict.get id cache.users)
-                |> Maybe.withDefault (Get (requestUser id))
+            Maybe.map (View << Result.map Profile) (Dict.get id cache.users)
+                |> Maybe.withDefault (Request (requestUser id))
 
         _ ->
-            Show (Ok NotFound)
+            View (Ok NotFound)
 
 
 
@@ -488,12 +504,39 @@ requestUser id =
         }
 
 
-requestFeed : Route -> Cmd Msg
-requestFeed route =
+requestFeed : Route.Feed -> Int -> Cmd Msg
+requestFeed feed page =
+    let
+        url =
+            endpoint (feedPathSegments feed page)
+    in
     Http.get
-        { url = endpoint [ Route.toApi route ]
-        , expect = Http.expectJson (GotFeed (Route.toApi route)) decodeFeed
+        { url = url
+        , expect = Http.expectJson (GotFeed url) decodeFeed
         }
+
+
+feedPathSegments : Route.Feed -> Int -> List String
+feedPathSegments feed page =
+    let
+        toSegements path =
+            [ "v0", path, String.fromInt page ++ ".json" ]
+    in
+    case feed of
+        Route.Top ->
+            toSegements "news"
+
+        Route.New ->
+            toSegements "newest"
+
+        Route.Ask ->
+            toSegements "ask"
+
+        Route.Show ->
+            toSegements "show"
+
+        Route.Jobs ->
+            toSegements "jobs"
 
 
 
