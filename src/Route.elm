@@ -2,11 +2,7 @@ module Route exposing
     ( Feed(..)
     , Route(..)
     , fromUrl
-    , mapFeedPage
-    , toFeedPage
-    , toMaxPages
-    , toNext
-    , toPrevious
+    , maxPages
     , toTitle
     , toUrl
     )
@@ -45,7 +41,6 @@ type Feed
 type alias RouteData =
     { title : String
     , url : String
-    , maxPages : Maybe Int
     }
 
 
@@ -89,59 +84,6 @@ toUrl =
     toRouteData >> .url
 
 
-toMaxPages : Route -> Maybe Int
-toMaxPages =
-    toRouteData >> .maxPages
-
-
-toFeedPage : Route -> Int
-toFeedPage route =
-    case route of
-        Feeds _ page ->
-            page
-
-        _ ->
-            0
-
-
-mapFeedPage : (Int -> Int) -> Route -> Route
-mapFeedPage fn route =
-    case route of
-        Feeds feed page ->
-            Feeds feed (fn page)
-
-        _ ->
-            route
-
-
-toNext : Route -> Maybe Route
-toNext route =
-    case ( toMaxPages route, route ) of
-        ( Just max, Feeds feed page ) ->
-            if page < max then
-                Just (mapFeedPage ((+) 1) route)
-
-            else
-                Nothing
-
-        _ ->
-            Nothing
-
-
-toPrevious : Route -> Maybe Route
-toPrevious route =
-    case route of
-        Feeds feed page ->
-            if page > 1 then
-                Just (mapFeedPage (\x -> x - 1) route)
-
-            else
-                Nothing
-
-        _ ->
-            Nothing
-
-
 toRouteData : Route -> RouteData
 toRouteData route =
     let
@@ -151,28 +93,47 @@ toRouteData route =
     in
     case route of
         Root ->
-            RouteData "Top" (Builder.absolute [] []) Nothing
+            RouteData "Top" (Builder.absolute [] [])
 
         Feeds Top page ->
-            RouteData "Top" (url "top" page) (Just 10)
+            RouteData "Top" (url "top" page)
 
         Feeds New page ->
-            RouteData "New" (url "new" page) (Just 12)
+            RouteData "New" (url "new" page)
 
         Feeds Ask page ->
-            RouteData "Ask" (url "ask" page) (Just 3)
+            RouteData "Ask" (url "ask" page)
 
         Feeds Show page ->
-            RouteData "Show" (url "show" page) (Just 2)
+            RouteData "Show" (url "show" page)
 
         Feeds Jobs page ->
-            RouteData "Jobs" (url "jobs" page) Nothing
+            RouteData "Jobs" (url "jobs" page)
 
         Item x ->
-            RouteData "Item" (Builder.absolute [ "item", String.fromInt x ] []) Nothing
+            RouteData "Item" (Builder.absolute [ "item", String.fromInt x ] [])
 
         User x ->
-            RouteData "User" (Builder.absolute [ "user", x ] []) Nothing
+            RouteData "User" (Builder.absolute [ "user", x ] [])
 
         NotFound ->
-            RouteData "404" (Builder.absolute [ "404" ] []) Nothing
+            RouteData "404" (Builder.absolute [ "404" ] [])
+
+
+maxPages : Feed -> Int
+maxPages feed =
+    case feed of
+        Top ->
+            10
+
+        New ->
+            12
+
+        Ask ->
+            3
+
+        Show ->
+            2
+
+        Jobs ->
+            1
