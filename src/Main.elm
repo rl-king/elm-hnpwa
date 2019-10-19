@@ -314,7 +314,8 @@ itemFooter item =
             [ text (String.fromInt item.points ++ " points by ")
             , link (Route.User item.user) [ text item.user ]
             , text (" " ++ item.timeAgo ++ " | ")
-            , link (Route.Item item.id) [ text (String.fromInt item.commentsCount ++ " comments") ]
+            , link (Route.Item item.id)
+                [ text (String.fromInt item.commentsCount ++ " comments") ]
             ]
 
 

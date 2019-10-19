@@ -64,11 +64,8 @@ fromUrl =
                 ]
 
         feedParser route path =
-            Parser.map (Feeds route << fallbackPage) <|
+            Parser.map (Feeds route << Maybe.withDefault 1) <|
                 (Parser.s path <?> Query.int "page")
-
-        fallbackPage =
-            Maybe.withDefault 1
     in
     Parser.parse parser
         >> Maybe.withDefault NotFound
@@ -88,8 +85,7 @@ toRouteData : Route -> RouteData
 toRouteData route =
     let
         url path page =
-            Builder.absolute [ path ]
-                [ Builder.int "page" page ]
+            Builder.absolute [ path ] [ Builder.int "page" page ]
     in
     case route of
         Root ->
