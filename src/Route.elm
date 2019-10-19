@@ -1,8 +1,8 @@
 module Route exposing
     ( Feed(..)
     , Route(..)
+    , fromUrl
     , mapFeedPage
-    , parse
     , toApi
     , toFeedData
     , toFeedPage
@@ -22,6 +22,10 @@ import Url.Parser as Parser
         , Parser
         )
 import Url.Parser.Query as Query
+
+
+
+-- DEFINITIONS
 
 
 type Route
@@ -48,20 +52,27 @@ type alias RouteData =
     }
 
 
-parse : Url.Url -> Route
-parse =
+
+-- PARSING
+
+
+fromUrl : Url.Url -> Route
+fromUrl =
     let
         parser =
             Parser.oneOf
                 [ Parser.map (Feeds Top (Just 1)) Parser.top
-                , Parser.map (Feeds Top) (Parser.s "top" <?> Query.int "page")
-                , Parser.map (Feeds New) (Parser.s "new" <?> Query.int "page")
-                , Parser.map (Feeds Ask) (Parser.s "ask" <?> Query.int "page")
-                , Parser.map (Feeds Show) (Parser.s "show" <?> Query.int "page")
-                , Parser.map (Feeds Jobs) (Parser.s "jobs" <?> Query.int "page")
+                , feedParser Top "top"
+                , feedParser New "new"
+                , feedParser Ask "ask"
+                , feedParser Show "show"
+                , feedParser Jobs "jobs"
                 , Parser.map Item (Parser.s "item" </> Parser.int)
                 , Parser.map User (Parser.s "user" </> Parser.string)
                 ]
+
+        feedParser route path =
+            Parser.map (Feeds route) (Parser.s path <?> Query.int "page")
     in
     Parser.parse parser
         >> Maybe.withDefault NotFound
