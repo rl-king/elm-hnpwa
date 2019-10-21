@@ -216,7 +216,7 @@ viewListItem index item =
         ]
 
 
-listItemUrl : Int -> Url -> String -> Html Msg
+listItemUrl : Int -> ItemUrl -> String -> Html Msg
 listItemUrl id url title =
     case url of
         Internal ->
@@ -297,7 +297,7 @@ viewItem item =
         ]
 
 
-itemUrl : Url -> String -> Html Msg
+itemUrl : ItemUrl -> String -> Html Msg
 itemUrl url title =
     case url of
         External path ->
@@ -555,7 +555,7 @@ type alias Item =
     , points : Int
     , user : String
     , timeAgo : String
-    , url : Url
+    , url : ItemUrl
     , domain : String
     , commentsCount : Int
     , comments : Comments
@@ -572,7 +572,7 @@ type alias User =
     }
 
 
-type Url
+type ItemUrl
     = External String
     | Internal
     | None
@@ -604,7 +604,7 @@ decodeItem =
         |> Pipeline.required "type" Decode.string
 
 
-decodeUrl : Decode.Decoder Url
+decodeUrl : Decode.Decoder ItemUrl
 decodeUrl =
     let
         toLink url =
