@@ -216,13 +216,17 @@ viewListItem index item =
         ]
 
 
-listItemUrl : Int -> String -> String -> Html Msg
+listItemUrl : Int -> Url -> String -> Html Msg
 listItemUrl id url title =
-    if String.contains "item?id=" url then
-        link (Route.Item id) [ text title ]
+    case url of
+        Internal ->
+            link (Route.Item id) [ text title ]
 
-    else
-        a [ href url, target "_blank", rel "noopener" ] [ text title ]
+        External path ->
+            a [ href path, target "_blank", rel "noopener" ] [ text title ]
+
+        None ->
+            span [] [ text title ]
 
 
 
@@ -293,13 +297,17 @@ viewItem item =
         ]
 
 
-itemUrl : String -> String -> Html Msg
+itemUrl : Url -> String -> Html Msg
 itemUrl url title =
-    if String.contains "item?id=" url then
-        h2 [] [ text title ]
+    case url of
+        External path ->
+            a [ href path, target "_blank", rel "noopener" ] [ h2 [] [ text title ] ]
 
-    else
-        a [ href url, target "_blank", rel "noopener" ] [ h2 [] [ text title ] ]
+        Internal ->
+            h2 [] [ text title ]
+
+        None ->
+            h2 [] [ text title ]
 
 
 itemFooter : Item -> Html Msg
@@ -547,7 +555,7 @@ type alias Item =
     , points : Int
     , user : String
     , timeAgo : String
-    , url : String
+    , url : Url
     , domain : String
     , commentsCount : Int
     , comments : Comments
@@ -562,6 +570,12 @@ type alias User =
     , id : String
     , karma : Int
     }
+
+
+type Url
+    = External String
+    | Internal
+    | None
 
 
 type Comments
@@ -582,12 +596,26 @@ decodeItem =
         |> Pipeline.optional "points" Decode.int 0
         |> Pipeline.optional "user" Decode.string ""
         |> Pipeline.required "time_ago" Decode.string
-        |> Pipeline.optional "url" Decode.string ""
+        |> Pipeline.optional "url" decodeUrl None
         |> Pipeline.optional "domain" Decode.string ""
         |> Pipeline.required "comments_count" Decode.int
         |> Pipeline.optional "comments" (Decode.lazy (\_ -> decodeComments)) Empty
         |> Pipeline.optional "content" Decode.string ""
         |> Pipeline.required "type" Decode.string
+
+
+decodeUrl : Decode.Decoder Url
+decodeUrl =
+    let
+        toLink url =
+            Decode.succeed <|
+                if String.contains "item?id=" url then
+                    Internal
+
+                else
+                    External url
+    in
+    Decode.andThen toLink Decode.string
 
 
 decodeUser : Decode.Decoder User
