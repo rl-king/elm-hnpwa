@@ -5,11 +5,9 @@ import Browser.Navigation as Navigation
 import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline as Pipeline
-import Json.Encode as Encode
 import Markdown exposing (defaultOptions)
 import Route exposing (Route)
 import Svg
@@ -284,7 +282,7 @@ viewItem : Item -> Html Msg
 viewItem item =
     article []
         [ section []
-            [ itemUrl item.id item.url item.title
+            [ itemUrl item.url item.title
             , span [ class "domain" ] [ text item.domain ]
             , itemFooter item
             ]
@@ -295,8 +293,8 @@ viewItem item =
         ]
 
 
-itemUrl : Int -> String -> String -> Html Msg
-itemUrl id url title =
+itemUrl : String -> String -> Html Msg
+itemUrl url title =
     if String.contains "item?id=" url then
         h2 [] [ text title ]
 

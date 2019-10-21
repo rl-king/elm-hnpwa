@@ -9,12 +9,7 @@ module Route exposing
 
 import Url
 import Url.Builder as Builder
-import Url.Parser as Parser
-    exposing
-        ( (</>)
-        , (<?>)
-        , Parser
-        )
+import Url.Parser as Parser exposing ((</>), (<?>))
 import Url.Parser.Query as Query
 
 
