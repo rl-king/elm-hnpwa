@@ -1,5 +1,5 @@
 # Elm Hacker News Progressive Web App
-A [HNPWA](https://hnpwa.com) implementation written in [Elm 0.19](http://elm-lang.org)
+A [HNPWA](https://hnpwa.com) implementation written in [Elm 0.19.1](http://elm-lang.org)
 
 <p align="center">
     <a href="https://elm-hnpwa.firebaseapp.com" rel="noopener" target="_blank">
@@ -18,8 +18,8 @@ A [HNPWA](https://hnpwa.com) implementation written in [Elm 0.19](http://elm-lan
 - Interactive (Faster 3G): 2.5s
 
 ## Features
-- Completely written in Elm 0.19
-- Cache requested resources in session
+- Written in Elm 0.19.1
+- Cache requested resources
 - Service worker for offline use
 
 ## Develop
