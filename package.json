@@ -9,7 +9,7 @@
         "url": "https://gitub.com/rl-king/elm-hnpwa"
     },
     "devDependencies": {
-        "elm": "^0.19.0-no-deps",
+        "elm": "^0.19.1-1",
         "elm-format": "^0.8.1",
         "livereload": "^0.8.0",
         "node-sass": "^4.12.0",
