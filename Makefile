@@ -50,7 +50,7 @@ minify:
 		@npx uglify-js ${DIST_DIR}/main.js --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters,keep_fargs=false,unsafe_comps,unsafe' | npx uglify-js --mangle --output=${DIST_DIR}/main.js\
 
 scss:
-		@node-sass ${SRC_DIR}/style.scss ${DIST_DIR}/style.css
+		@npx sass ${SRC_DIR}/style.scss ${DIST_DIR}/style.css
 
 serve:
 		serve --single --listen 5001 ./dist

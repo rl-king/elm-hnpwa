@@ -9,12 +9,12 @@
         "url": "https://gitub.com/rl-king/elm-hnpwa"
     },
     "devDependencies": {
-        "elm": "^0.19.1-1",
-        "elm-format": "^0.8.1",
+        "elm": "^0.19.1-5",
+        "elm-format": "^0.8.5",
         "livereload": "^0.8.0",
-        "node-sass": "^4.12.0",
+        "sass": "^1.55.0",
         "serve": "^11.2.0",
         "sw-precache": "^5.2.1",
-        "uglify-js": "^3.4.5"
+        "uglify-js": "^3.17.2"
     }
 }
